@@ -63,7 +63,11 @@ public class Board implements Iterable<Tile> {
     }
 
     /** Return the current Tile at (COL, ROW), where 0 <= ROW < size(),
-     *  0 <= COL < size(). Returns null if there is no tile there. */
+     *  0 <= COL < size(). Returns null if there is no tile there. 
+     * | 2 |   |   |
+     * | 1 |   |   |
+     * | 0 | 1 | 2 |
+     */
     public Tile tile(int col, int row) {
         return vtile(col, row, viewPerspective);
     }
