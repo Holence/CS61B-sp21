@@ -72,7 +72,7 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
         MAX_SIZE = new_size;
     }
 
-    public void shrink() {
+    private void shrink() {
         int new_size = MAX_SIZE / 2;
         if (nextlast > nextfirst) {
             normal_type_resize(new_size);
