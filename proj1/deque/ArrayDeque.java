@@ -18,10 +18,12 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
         return size == array.length;
     }
 
+    /** 是否太空 */
     private boolean hollow() {
         return size > 16 && (float) size / MAX_SIZE < 0.25;
     }
 
+    /** 方便计算真实下标 */
     private int true_pos(int begin, int offset) {
         return (MAX_SIZE + begin + offset) % MAX_SIZE;
     }
@@ -31,8 +33,11 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
         return size;
     }
 
+    // 傻了，直接用get()从头到尾遍历一遍赋值到new_array就行了，哪里用得着分类讨论啊……
+    // 只能说这是用System.arraycopy的方法……
+
+    /** 正常顺序，填到new_array最左侧 */
     private void normal_type_resize(int new_size) {
-        // 正常顺序，填到new_array最左侧
         ElemType[] new_array = (ElemType[]) new Object[new_size];
         System.arraycopy(array, true_pos(nextfirst, 1), new_array, 0, size);
         nextlast = size;
@@ -40,6 +45,7 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
         nextfirst = array.length - 1;
     }
 
+    /** 首在右，尾在左，分别把首尾填到new_array的两端 */
     private void abnormal_type_resize(int new_size) {
         // 中间分裂
         ElemType[] new_array = (ElemType[]) new Object[new_size];
