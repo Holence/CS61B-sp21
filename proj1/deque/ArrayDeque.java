@@ -2,7 +2,7 @@ package deque;
 
 import java.util.Iterator;
 
-public class ArrayDeque<ElemType> implements Deque<ElemType> {
+public class ArrayDeque<ElemType> implements Deque<ElemType>, Iterable<ElemType> {
 
     private ElemType[] array;
     private int size;
