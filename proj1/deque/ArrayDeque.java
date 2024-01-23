@@ -2,15 +2,15 @@ package deque;
 
 import java.util.Iterator;
 
-public class ArrayDeque<ElemType> implements Deque<ElemType> {
+public class ArrayDeque<T> implements Deque<T>, Iterable<T> {
 
-    private ElemType[] array;
+    private T[] array;
     private int size;
     private int nextfirst, nextlast;
     private int MAX_SIZE = 8;
 
     public ArrayDeque() {
-        array = (ElemType[]) new Object[MAX_SIZE];
+        array = (T[]) new Object[MAX_SIZE];
         size = 0;
         nextfirst = MAX_SIZE - 1;
         nextlast = 0;
@@ -22,7 +22,7 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
 
     /** 是否太空 */
     private boolean hollow() {
-        return size > 16 && (float) size / MAX_SIZE < 0.25;
+        return MAX_SIZE > 16 && (float) size / MAX_SIZE < 0.25;
     }
 
     /** 方便计算真实下标 */
@@ -35,57 +35,57 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
         return size;
     }
 
-    // 傻了，直接用get()从头到尾遍历一遍赋值到new_array就行了，哪里用得着分类讨论啊……
+    // 傻了，直接用get()从头到尾遍历一遍赋值到newArray就行了，哪里用得着分类讨论啊……
     // 只能说这是用System.arraycopy的方法……
 
-    /** 正常顺序，填到new_array最左侧 */
-    private void normalTypeResize(int new_size) {
-        ElemType[] new_array = (ElemType[]) new Object[new_size];
-        System.arraycopy(array, truePos(nextfirst, 1), new_array, 0, size);
+    /** 正常顺序，填到newArray最左侧 */
+    private void normalTypeResize(int newSize) {
+        T[] newArray = (T[]) new Object[newSize];
+        System.arraycopy(array, truePos(nextfirst, 1), newArray, 0, size);
         nextlast = size;
-        array = new_array;
+        array = newArray;
         nextfirst = array.length - 1;
     }
 
-    /** 首在右，尾在左，分别把首尾填到new_array的两端 */
-    private void abnormalTypeResize(int new_size) {
+    /** 首在右，尾在左，分别把首尾填到newArray的两端 */
+    private void abnormalTypeResize(int newSize) {
         // 中间分裂
-        ElemType[] new_array = (ElemType[]) new Object[new_size];
-        int right_nums = array.length - nextfirst - 1;
-        int left_nums = size - right_nums;
-        // 右边是开头的部分，填到new_array的尾部
-        System.arraycopy(array, nextfirst + 1, new_array, new_array.length - right_nums, right_nums);
-        // 左边是结尾的部分，填到new_array的头部
-        System.arraycopy(array, 0, new_array, 0, left_nums);
-        array = new_array;
+        T[] newArray = (T[]) new Object[newSize];
+        int rightNums = array.length - nextfirst - 1;
+        int leftNums = size - rightNums;
+        // 右边是开头的部分，填到newArray的尾部
+        System.arraycopy(array, nextfirst + 1, newArray, newArray.length - rightNums, rightNums);
+        // 左边是结尾的部分，填到newArray的头部
+        System.arraycopy(array, 0, newArray, 0, leftNums);
+        array = newArray;
         // nextfirst从后往前数
-        nextfirst = new_array.length - right_nums - 1;
+        nextfirst = newArray.length - rightNums - 1;
         // nextlast从前往后数
-        nextlast = left_nums;
+        nextlast = leftNums;
     }
 
     private void expand() {
-        int new_size = MAX_SIZE * 2;
+        int newSize = MAX_SIZE * 2;
         if (nextfirst > nextlast) {
-            normalTypeResize(new_size);
+            normalTypeResize(newSize);
         } else {
-            abnormalTypeResize(new_size);
+            abnormalTypeResize(newSize);
         }
-        MAX_SIZE = new_size;
+        MAX_SIZE = newSize;
     }
 
     private void shrink() {
-        int new_size = MAX_SIZE / 2;
+        int newSize = MAX_SIZE / 4;
         if (nextlast > nextfirst) {
-            normalTypeResize(new_size);
+            normalTypeResize(newSize);
         } else {
-            abnormalTypeResize(new_size);
+            abnormalTypeResize(newSize);
         }
-        MAX_SIZE = new_size;
+        MAX_SIZE = newSize;
     }
 
     @Override
-    public void addFirst(ElemType item) {
+    public void addFirst(T item) {
         if (full()) {
             expand();
         }
@@ -96,7 +96,7 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
     }
 
     @Override
-    public void addLast(ElemType item) {
+    public void addLast(T item) {
         if (full()) {
             expand();
         }
@@ -107,7 +107,7 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
     }
 
     @Override
-    public ElemType removeFirst() {
+    public T removeFirst() {
         if (isEmpty()) {
             return null;
         }
@@ -117,13 +117,13 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
         }
         size -= 1;
         nextfirst = truePos(nextfirst, 1);
-        ElemType ret = array[nextfirst];
+        T ret = array[nextfirst];
         array[nextfirst] = null;
         return ret;
     }
 
     @Override
-    public ElemType removeLast() {
+    public T removeLast() {
         if (isEmpty()) {
             return null;
         }
@@ -133,15 +133,16 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
         }
         size -= 1;
         nextlast = truePos(nextlast, -1);
-        ElemType ret = array[nextlast];
+        T ret = array[nextlast];
         array[nextlast] = null;
         return ret;
     }
 
     @Override
-    public ElemType get(int index) {
-        if (index < 0)
+    public T get(int index) {
+        if (index < 0) {
             return null;
+        }
         return array[truePos(nextfirst + 1, index)];
     }
 
@@ -154,8 +155,8 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
     }
 
     @Override
-    public Iterator<ElemType> iterator() {
-        return new Iterator<ElemType>() {
+    public Iterator<T> iterator() {
+        return new Iterator<T>() {
             private int index = 0;
 
             @Override
@@ -164,7 +165,7 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
             }
 
             @Override
-            public ElemType next() {
+            public T next() {
                 return get(index++);
             }
         };
@@ -172,16 +173,18 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj instanceof Deque alias) {
-            if (size() != alias.size())
+        }
+        if (obj instanceof Deque) {
+            Deque alias = (Deque) obj;
+            if (size() != alias.size()) {
                 return false;
-            Iterator<ElemType> a = iterator();
-            Iterator<ElemType> b = alias.iterator();
-            while (a.hasNext()) {
-                if (!a.next().equals(b.next()))
+            }
+            for (int i = 0; i < size(); i++) {
+                if (!get(i).equals(alias.get(i))) {
                     return false;
+                }
             }
             return true;
         }

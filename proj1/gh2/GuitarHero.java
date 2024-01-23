@@ -23,8 +23,9 @@ public class GuitarHero {
                 key = StdDraw.nextKeyTyped();
                 index = keyboard.indexOf(key);
                 System.out.println(key);
-                if (index == -1)
+                if (index == -1) {
                     continue;
+                }
                 strings.get(index).pluck();
             }
 
