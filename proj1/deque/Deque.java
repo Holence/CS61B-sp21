@@ -1,8 +1,8 @@
 package deque;
 
-// import java.util.Iterator;
+import java.util.Iterator;
 
-public interface Deque<ElemType> {
+public interface Deque<ElemType> extends Iterable<ElemType> {
     public void addFirst(ElemType item);
 
     public void addLast(ElemType item);
@@ -24,6 +24,7 @@ public interface Deque<ElemType> {
     // If no such item exists, returns null.
     public ElemType get(int index);
 
-    // public Iterator<ElemType> iterator();
-    // public boolean equals(Object o);
+    public Iterator<ElemType> iterator();
+
+    public boolean equals(Object obj);
 }

@@ -7,7 +7,7 @@ import static org.junit.Assert.*;
 public class LinkedListDequeTest {
     @Test
     public void addTest() {
-        Deque<Integer> l = new LinkedListDeque<>();
+        LinkedListDeque<Integer> l = new LinkedListDeque<>();
         assertEquals(null, l.get(0));
         assertEquals(null, l.get(1));
 
@@ -34,6 +34,10 @@ public class LinkedListDequeTest {
         assertEquals(4, (int) l.get(3));
         assertEquals(5, (int) l.get(4));
         assertEquals(null, l.get(5));
+
+        for (int i = -l.size(); i < l.size() * 2; i++) {
+            assertEquals(l.getRecursive(i), l.get(i));
+        }
 
     }
 

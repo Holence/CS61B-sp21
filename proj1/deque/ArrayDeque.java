@@ -1,5 +1,7 @@
 package deque;
 
+import java.util.Iterator;
+
 public class ArrayDeque<ElemType> implements Deque<ElemType> {
 
     private ElemType[] array;
@@ -24,7 +26,7 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
     }
 
     /** 方便计算真实下标 */
-    private int true_pos(int begin, int offset) {
+    private int truePos(int begin, int offset) {
         return (MAX_SIZE + begin + offset) % MAX_SIZE;
     }
 
@@ -37,16 +39,16 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
     // 只能说这是用System.arraycopy的方法……
 
     /** 正常顺序，填到new_array最左侧 */
-    private void normal_type_resize(int new_size) {
+    private void normalTypeResize(int new_size) {
         ElemType[] new_array = (ElemType[]) new Object[new_size];
-        System.arraycopy(array, true_pos(nextfirst, 1), new_array, 0, size);
+        System.arraycopy(array, truePos(nextfirst, 1), new_array, 0, size);
         nextlast = size;
         array = new_array;
         nextfirst = array.length - 1;
     }
 
     /** 首在右，尾在左，分别把首尾填到new_array的两端 */
-    private void abnormal_type_resize(int new_size) {
+    private void abnormalTypeResize(int new_size) {
         // 中间分裂
         ElemType[] new_array = (ElemType[]) new Object[new_size];
         int right_nums = array.length - nextfirst - 1;
@@ -65,9 +67,9 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
     private void expand() {
         int new_size = MAX_SIZE * 2;
         if (nextfirst > nextlast) {
-            normal_type_resize(new_size);
+            normalTypeResize(new_size);
         } else {
-            abnormal_type_resize(new_size);
+            abnormalTypeResize(new_size);
         }
         MAX_SIZE = new_size;
     }
@@ -75,9 +77,9 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
     private void shrink() {
         int new_size = MAX_SIZE / 2;
         if (nextlast > nextfirst) {
-            normal_type_resize(new_size);
+            normalTypeResize(new_size);
         } else {
-            abnormal_type_resize(new_size);
+            abnormalTypeResize(new_size);
         }
         MAX_SIZE = new_size;
     }
@@ -90,7 +92,7 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
         size += 1;
         array[nextfirst] = item;
 
-        nextfirst = true_pos(nextfirst, -1);
+        nextfirst = truePos(nextfirst, -1);
     }
 
     @Override
@@ -101,7 +103,7 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
         size += 1;
         array[nextlast] = item;
 
-        nextlast = true_pos(nextlast, 1);
+        nextlast = truePos(nextlast, 1);
     }
 
     @Override
@@ -114,7 +116,7 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
             shrink();
         }
         size -= 1;
-        nextfirst = true_pos(nextfirst, 1);
+        nextfirst = truePos(nextfirst, 1);
         ElemType ret = array[nextfirst];
         array[nextfirst] = null;
         return ret;
@@ -130,7 +132,7 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
             shrink();
         }
         size -= 1;
-        nextlast = true_pos(nextlast, -1);
+        nextlast = truePos(nextlast, -1);
         ElemType ret = array[nextlast];
         array[nextlast] = null;
         return ret;
@@ -138,7 +140,9 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
 
     @Override
     public ElemType get(int index) {
-        return array[true_pos(nextfirst + 1, index)];
+        if (index < 0)
+            return null;
+        return array[truePos(nextfirst + 1, index)];
     }
 
     @Override
@@ -147,5 +151,40 @@ public class ArrayDeque<ElemType> implements Deque<ElemType> {
             System.out.print(get(i) + " ");
         }
         System.out.println();
+    }
+
+    @Override
+    public Iterator<ElemType> iterator() {
+        return new Iterator<ElemType>() {
+            private int index = 0;
+
+            @Override
+            public boolean hasNext() {
+                return index < size;
+            }
+
+            @Override
+            public ElemType next() {
+                return get(index++);
+            }
+        };
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj instanceof Deque alias) {
+            if (size() != alias.size())
+                return false;
+            Iterator<ElemType> a = iterator();
+            Iterator<ElemType> b = alias.iterator();
+            while (a.hasNext()) {
+                if (!a.next().equals(b.next()))
+                    return false;
+            }
+            return true;
+        }
+        return false;
     }
 }

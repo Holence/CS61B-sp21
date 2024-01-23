@@ -1,5 +1,7 @@
 package deque;
 
+import java.util.Iterator;
+
 public class LinkedListDeque<ElemType> implements Deque<ElemType> {
 
     private class Node {
@@ -83,6 +85,8 @@ public class LinkedListDeque<ElemType> implements Deque<ElemType> {
 
     @Override
     public ElemType get(int index) {
+        if (index < 0)
+            return null;
         Node p = sentinel.next;
         for (int i = 0; i < index; i++) {
             if (p == sentinel)
@@ -90,5 +94,56 @@ public class LinkedListDeque<ElemType> implements Deque<ElemType> {
             p = p.next;
         }
         return p.value;
+    }
+
+    private ElemType recursiveHelper(Node p, int index) {
+        if (index == 0)
+            return p.value;
+        if (p == sentinel)
+            return null;
+        return recursiveHelper(p.next, index - 1);
+    }
+
+    public ElemType getRecursive(int index) {
+        if (index < 0)
+            return null;
+        return recursiveHelper(sentinel.next, index);
+    }
+
+    @Override
+    public Iterator<ElemType> iterator() {
+        return new Iterator<ElemType>() {
+            private Node p = sentinel.next;
+
+            @Override
+            public boolean hasNext() {
+                return p != sentinel;
+            }
+
+            @Override
+            public ElemType next() {
+                Node prev = p;
+                p = p.next;
+                return prev.value;
+            }
+        };
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj instanceof Deque alias) {
+            if (size() != alias.size())
+                return false;
+            Iterator<ElemType> a = iterator();
+            Iterator<ElemType> b = alias.iterator();
+            while (a.hasNext()) {
+                if (!a.next().equals(b.next()))
+                    return false;
+            }
+            return true;
+        }
+        return false;
     }
 }
