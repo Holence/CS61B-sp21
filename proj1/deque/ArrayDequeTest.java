@@ -21,6 +21,9 @@ public class ArrayDequeTest {
             ll.addLast(i);
         }
 
+        assertTrue(l.equals(ll));
+        assertTrue(ll.equals(l));
+
         assertEquals(ll.size(), l.size());
         for (int i = 0; i < ll.size(); i++) {
             assertEquals(ll.get(i), l.get(i));
@@ -33,6 +36,9 @@ public class ArrayDequeTest {
         for (int i = 0; i < 15; i++) {
             assertEquals(ll.removeLast(), l.removeLast());
         }
+
+        assertTrue(l.equals(ll));
+        assertTrue(ll.equals(l));
     }
 
     @Test
