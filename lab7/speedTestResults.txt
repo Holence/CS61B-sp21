@@ -1,0 +1,15 @@
+InsertRandomSpeedTest:
+
+--Stack Overflow -- couldn't add 100000 strings of length 12.
+class bstmap.BSTMap: 0.11 sec
+Java's Built-in TreeMap: 0.10 sec
+Java's Built-in HashMap: 0.06 sec
+
+InsertInOrderSpeedTest:
+
+--Stack Overflow -- couldn't add 100000 strings.
+class bstmap.BSTMap: 10.57 sec
+Java's Built-in TreeMap: 0.10 sec
+Java's Built-in HashMap: 0.05 sec
+
+顺序地put存储，将会导致BST只向一边生长，极度不平衡
