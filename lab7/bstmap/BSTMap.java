@@ -49,7 +49,7 @@ public class BSTMap<K extends Comparable<K>, V> implements Map61B<K, V> {
         return containsKey(root, key);
     }
 
-    public boolean containsKey(BSTNode p, K key) {
+    private boolean containsKey(BSTNode p, K key) {
         if (p == null) {
             return false;
         } else if (key.compareTo(p.key) > 0) {
