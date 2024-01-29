@@ -1,6 +1,7 @@
 package hashmap;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Set;
@@ -108,19 +109,36 @@ public class MyHashMap<K, V> implements Map61B<K, V> {
 
     @Override
     public Iterator<K> iterator() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'iterator'");
+        return new Iterator<K>() {
+            private int index = 0;
+            private int left = size;
+            Iterator<Node> bucket = buckets[0].iterator();
+
+            @Override
+            public boolean hasNext() {
+                return left != 0;
+            }
+
+            @Override
+            public K next() {
+                if (index < MAXSIZE - 1 && !bucket.hasNext()) {
+                    bucket = buckets[++index].iterator();
+                }
+                left -= 1;
+                return bucket.next().key;
+            }
+        };
     }
 
     @Override
     public void clear() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'clear'");
+        size = 0;
+        buckets = createTable(MAXSIZE);
     }
 
     @Override
     public boolean containsKey(K key) {
-        int index = truePose(key.hashCode());
+        int index = truePose(key);
         for (Node node : buckets[index]) {
             if (node.key.equals(key)) {
                 return true;
@@ -131,10 +149,20 @@ public class MyHashMap<K, V> implements Map61B<K, V> {
 
     @Override
     public V get(K key) {
-        int index = truePose(key.hashCode());
+        int index = truePose(key);
         for (Node node : buckets[index]) {
             if (node.key.equals(key)) {
                 return node.value;
+            }
+        }
+        return null;
+    }
+
+    private Node getNode(K key) {
+        int index = truePose(key);
+        for (Node node : buckets[index]) {
+            if (node.key.equals(key)) {
+                return node;
             }
         }
         return null;
@@ -145,35 +173,75 @@ public class MyHashMap<K, V> implements Map61B<K, V> {
         return size;
     }
 
-    private int truePose(int index) {
-        return Math.floorMod(index, MAXSIZE);
+    private int truePose(K key) {
+        return Math.floorMod(key.hashCode(), MAXSIZE);
+    }
+
+    private boolean isFull() {
+        return (double) size / MAXSIZE > loadFactor;
+    }
+
+    private void resize() {
+        Collection<Node>[] old_buckets = buckets;
+        clear();
+        for (Collection<Node> bucket : old_buckets) {
+            for (Node node : bucket) {
+                put(node.key, node.value);
+            }
+        }
     }
 
     @Override
     public void put(K key, V value) {
-        int index = truePose(key.hashCode());
-        buckets[index].add(createNode(key, value));
+        Node node = getNode(key);
+        if (node != null) {
+            node.value = value;
+        } else {
+            buckets[truePose(key)].add(createNode(key, value));
+            size += 1;
+        }
+
+        if (isFull()) {
+            MAXSIZE *= 2;
+            resize();
+        }
     }
 
     @Override
     public Set<K> keySet() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'keySet'");
+        Set<K> s = new HashSet();
+
+        for (K key : this) {
+            s.add(key);
+        }
+        return s;
     }
 
     @Override
     public V remove(K key) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'remove'");
+        Node node = getNode(key);
+        if (node == null) {
+            return null;
+        } else {
+            size -= 1;
+            buckets[truePose(key)].remove(node);
+            return node.value;
+        }
     }
 
     @Override
     public V remove(K key, V value) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'remove'");
-    }
-
-    public static void main(String[] args) {
-
+        Node node = getNode(key);
+        if (node == null) {
+            return null;
+        } else {
+            if (node.value.equals(value)) {
+                size -= 1;
+                buckets[truePose(key)].remove(node);
+                return node.value;
+            } else {
+                return null;
+            }
+        }
     }
 }
