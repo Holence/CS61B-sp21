@@ -121,11 +121,17 @@ public class MyHashMap<K, V> implements Map61B<K, V> {
 
             @Override
             public K next() {
-                if (index < MAXSIZE - 1 && !bucket.hasNext()) {
-                    bucket = buckets[++index].iterator();
+                if (bucket.hasNext()) {
+                    left -= 1;
+                    return bucket.next().key;
+                } else {
+                    if (index < MAXSIZE - 1) {
+                        bucket = buckets[++index].iterator();
+                        return next();
+                    } else {
+                        return null;
+                    }
                 }
-                left -= 1;
-                return bucket.next().key;
             }
         };
     }
