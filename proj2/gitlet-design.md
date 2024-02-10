@@ -47,7 +47,7 @@
   void init(){
       if (.gitlet exist){
           "A Gitlet version-control system already exists in the current directory.";
-          return;
+          exit(0);
       }
       建立.gitlet文件树;
       commit("initial commit");
@@ -63,7 +63,7 @@
   void add(String filename){
       if (filename not exist){
           "File does not exist.";
-          return;
+          exit(0);
       }
       fileHashID = hashFile(filename);
       if (!HEAD_Commit.contain(fileHashID)){
@@ -86,7 +86,7 @@
   }
   ```
 
-- `gitlet commit`
+- `gitlet commit [message]`
 
   ```java
   // stage中是否有state为ADDED或REMOVED的
@@ -94,8 +94,12 @@
   
   void commit(String message){
       if (!hasStaged()){
-          "No changes added to the commit."
+          "No changes added to the commit.";
       }
+      if (message.isEmpty()){
+          "Please enter a commit message.";        
+      }
+  
       把stage中state为REMOVED的删除;
       把stage中所有state设为UNCHANGED;
       计算hashID，复制到object;
@@ -111,19 +115,17 @@
   }
   ```
 
-- `gitlet rm`
+- `gitlet rm [filename]`
 
   ```java
   void remove(String filename){
       fileHashID = hashFile(filename);
       if (containAdd(fileHashID)){
           更新stage中对应file的state为UNCHANGED;
-          return;
       }
       else if (HEAD_Commit.contain(fileHashID)){
           更新stage中对应file的state为REMOVED;
           如果文件在的话，删除文件;
-          return;
       }
       else{
           "No reason to remove the file.";
@@ -209,7 +211,8 @@
       if (!在HEAD中找filename){
           "File does not exist in that commit.";
       }
-      删除，复制objects;
+      如果有的话，删除;
+      复制objects;
   }
   ```
 
@@ -219,7 +222,8 @@
   void checkoutFileInCommit(String filename, String commitID){
       "No commit with that id exists.";
       "File does not exist in that commit.";
-      删除，复制objects;
+      如果有的话，删除;
+      复制objects;
   }
   // commitID要和git一样支持4位以上的缩写
   ```
@@ -231,7 +235,7 @@
       "No such branch exists.";
       if (branch == branchID(branchname)){
           "No need to checkout the current branch.";
-          return;
+          exit(0);
       }
       if (hasUntracked()){
           "There is an untracked file in the way; delete it, or add and commit it first.";        
@@ -239,8 +243,9 @@
       checkoutCommit(branch);
   }
   
-  void checkoutCommit(String commitID){
-      删光;
+  private void checkoutCommit(String commitID){
+      // gitlet没有detached HEAD state，所以这个不能让外界调用
+      清空目录;
       复制commit的objects;
       复制commit的stage;
       更新HEAD;
@@ -283,6 +288,71 @@
   }
   ```
 
+- `gitlet merge [branchname]`
+
+  merge branch into current 用branch修改current
+
+  ```java
+  // staging area若不为空 "You have uncommitted changes."
+  // branchname不存在 "A branch with that name does not exist."
+  // 自交 "Cannot merge a branch with itself."
+  
+  // ①
+  // root - branch - commit - commit - *current
+  // root - branch - commit - commit - *current
+  // 不需要附加commit
+  // "Given branch is an ancestor of the current branch."
+  
+  // ② fast-forward
+  // root - *current - commit - commit - branch
+  // root - commit - commit - commit - branch/*current
+  // 不需要附加commit
+  // "Current branch fast-forwarded."
+  
+  // ③ 
+  //       branch
+  //      /
+  // split
+  //      \
+  //       *current
+  //
+  //       branch
+  //      /      \
+  // split        merged_commit - *current
+  //      \      /
+  //       commit
+  // 列出split、current、branch中文件的并集，对于每个文件名，按照下表对号入座
+  // 如果有Untracked或Modifications Not Staged且对应到Command不为空的情况，则"There is an untracked file in the way; delete it, or add and commit it first."
+  // 然后commit("Merged [branchname] into [currentname].")
+  // 如果有conflict，"Encountered a merge conflict."
+  ```
+
+  Current和Merged的一样，`continue`就行了
+
+  Current和Merged不一样，才需要额外的Command
+
+  merge时不允许staging area有东西！！！
+
+  merge时允许有Untracked或Modifications Not Staged，仅当merge不会影响到这些文件（也就是下表的Command为空的情况）。如果Command不为空，则一定会对这些文件overwrite或delete，则应该报错"There is an untracked file in the way; delete it, or add and commit it first."
+
+  > 其实完全可以通过“在Command之前备份、Command之后复原”，来保留Untracked或Modifications Not Staged。
+  >
+  > 但既然git也是这个德性，那就算了吧……
+
+  | Split | Branch | Current | Merged       | Command                           |
+  | ----- | ------ | ------- | ------------ | --------------------------------- |
+  | A     | A      | A       | A            | -                                 |
+  | A     | A!     | A       | A!           | checkout [branch] -- A<br />add A |
+  | A     | A      | A!      | A!           | -                                 |
+  | -     | -      | A       | A            | -                                 |
+  | -     | A      | -       | A            | checkout [branch] -- A<br />add A |
+  | A     | X      | A       | X            | rm A                              |
+  | A     | A      | X       | X            | -                                 |
+  | A     | A!     | A!      | A!           | -                                 |
+  | A     | A!     | A?      | Conflict格式 | add A                             |
+
+  
+
 ## Commit
 
 ### variables
@@ -301,11 +371,9 @@
 
 作为repo的stage（当前的working directory以及staging area）或 commit的stage
 
-Map?/List? of File？？？？？？
+`Map<String, StageFile>` 从filepath到StageFile的映射（因为Gitlet是flat的，所以不涉及文件夹路径，只是文件名）
 
-Inner Class File：
-
-- `String filepath` 文件路径（因为Gitlet是flat的，所以不涉及文件夹路径，只是文件名）
+Inner Class StageFile：
 
 - `String hashID`
 
@@ -316,5 +384,3 @@ Inner Class File：
   > `STAGED` add
   >
   > `REMOVED` rm
-
-- `int collionID` 冲突??
