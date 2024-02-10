@@ -6,10 +6,13 @@
 
 ```
 .gitlet/
-  objects/ # Blob
-    a1b2 # hashID of Commit (Commit的Serialization)
-    c3b4 # hashID of Commit's stage (commit时的“文件-hashID”映射，状态符全部为UNCHANGED)
-    e5f6 # hashID of file (任何staged或comitted的文件，只增不删)
+  objects/ # Blob or Commit
+    a1/
+      b2xxxx # hashID of Commit (Commit的Serialization)
+    c3/
+      b4xxxx # hashID of Commit's stage (commit时的“文件-hashID”映射，状态符全部为UNCHANGED)
+    e5/
+      f6xxxx # hashID of file (任何staged或comitted的文件，只增不删)
   refs/
     heads/ # Branch
       master (master's tip commit的hashID)
@@ -28,7 +31,7 @@
 
 - `String branch`
 
-  💾`.getlet/refs/heads/[branch-name]`
+  💾`.getlet/refs/heads/[branchname]`
 
 - `Stage stage`
 
@@ -78,7 +81,7 @@
           // ②rm file后，又添加了一个一模一样的回来
           更新stage中对应file的state为UNCHANGED;
           // 不用删掉object中的之前add的Blob
-          // git中用prune去除unreachable的object
+          // git中用prune去除dangling object
       }
   }
   ```
@@ -127,7 +130,7 @@
       }
   }
   ```
-  
+
 - `gitlet log`
 
   ```java
@@ -173,24 +176,112 @@
 
   ```java
   void status(){
+      // entry in lexicographic order
       "=== Branches ===";
-      *master;
+      "*master";
+      "deputy";
   
       "=== Staged Files ===";
       stage中stauts为ADDED;
+      // 即使在这里出现，也可能在(deleted)或(modified)中再次出现
+  
       "=== Removed Files ===";
       stage中stauts为REMOVED;
+      // 即使在这里出现，也可能在Untracked中再次出现
   
       "=== Modifications Not Staged For Commit ===";
-      junk.txt (deleted);
-      wug3.txt (modified);
+      // (deleted)
+      stage中stauts不为REMOVED的文件名 且 现在not exist了;
+  
+      // (modified)
+      stage中stauts不为REMOVED的文件 且 被修改后hashID不一样了;
   
       "=== Untracked Files ===";
-      random.stuff;
+      不在stage中 且 exist;
+      stage中status为REMOVED的文件名 且 现在exist了;
   }
   ```
 
+- `gitlet checkout -- [filename]`
+
+  ```java
+  void checkoutFileInHEAD(String filename){
+      if (!在HEAD中找filename){
+          "File does not exist in that commit.";
+      }
+      删除，复制objects;
+  }
+  ```
+
+- `gitlet checkout [commitID] -- [filename]`
+
+  ```java
+  void checkoutFileInCommit(String filename, String commitID){
+      "No commit with that id exists.";
+      "File does not exist in that commit.";
+      删除，复制objects;
+  }
+  // commitID要和git一样支持4位以上的缩写
+  ```
+
+- `gitlet checkout [branchname]`
+
+  ```java
+  void checkoutBranch(String branchname){
+      "No such branch exists.";
+      if (branch == branchID(branchname)){
+          "No need to checkout the current branch.";
+          return;
+      }
+      if (hasUntracked()){
+          "There is an untracked file in the way; delete it, or add and commit it first.";        
+      }
+      checkoutCommit(branch);
+  }
   
+  void checkoutCommit(String commitID){
+      删光;
+      复制commit的objects;
+      复制commit的stage;
+      更新HEAD;
+  }
+  ```
+
+- `gitlet branch [branchname]`
+
+  ```java
+  void createBranch(String branchname){
+      复制branch到新文件.getlet/refs/heads/branchname;
+  }
+  ```
+
+- `gitlet rm-branch [branchname]`
+
+  ```java
+  void removeBranch(String branchname){
+  	"A branch with that name does not exist.";
+      if (Branch.name(branch)==branchname){
+          "Cannot remove the current branch.";
+      }
+      删除.getlet/refs/heads/branchname;
+      // 不用管branch中的commit
+      // git中会在一定的expire时间后自动prune dangling commit
+  }
+  ```
+
+- `gitlet reset [commitID]`
+
+  ```java
+  // 和 git reset --hard [commitID] 一样
+  // 可以跨branch随意reset，只用把branch的指针设为commitID就行了
+  void reset(String commitID){
+      "No commit with that id exists.";
+      checkoutCommit(commitID);
+      设置branch为commitID;
+      // 不用管branch中的commit
+      // git中会在一定的expire时间后自动prune dangling commit
+  }
+  ```
 
 ## Commit
 
