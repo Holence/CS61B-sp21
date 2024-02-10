@@ -281,6 +281,9 @@
   // 可以跨branch随意reset，只用把branch的指针设为commitID就行了
   void reset(String commitID){
       "No commit with that id exists.";
+      if (hasUntracked()){
+          "There is an untracked file in the way; delete it, or add and commit it first.";        
+      }
       checkoutCommit(commitID);
       设置branch为commitID;
       // 不用管branch中的commit
@@ -329,16 +332,20 @@
 
   Current和Merged的一样，`continue`就行了
 
+  > 如果全部文件都是这样，将导致commit中没有任何修改，会触发commit中的报错，gitlet要求是这样的。
+  >
+  > 然而git中允许没有任何修改的merge commit
+
   Current和Merged不一样，才需要额外的Command
 
   merge时不允许staging area有东西！！！
-
+  
   merge时允许有Untracked或Modifications Not Staged，仅当merge不会影响到这些文件（也就是下表的Command为空的情况）。如果Command不为空，则一定会对这些文件overwrite或delete，则应该报错"There is an untracked file in the way; delete it, or add and commit it first."
 
   > 其实完全可以通过“在Command之前备份、Command之后复原”，来保留Untracked或Modifications Not Staged。
   >
   > 但既然git也是这个德性，那就算了吧……
-
+  
   | Split | Branch | Current | Merged       | Command                           |
   | ----- | ------ | ------- | ------------ | --------------------------------- |
   | A     | A      | A       | A            | -                                 |
@@ -350,7 +357,7 @@
   | A     | A      | X       | X            | -                                 |
   | A     | A!     | A!      | A!           | -                                 |
   | A     | A!     | A?      | Conflict格式 | add A                             |
-
+  
   
 
 ## Commit
