@@ -127,6 +127,70 @@
       }
   }
   ```
+  
+- `gitlet log`
+
+  ```java
+  void log(){
+      p=Commit.fromHash(HEAD);
+      while(p.hashParent()){
+          print();
+          p=p.firstParent();
+      }
+  }
+  ```
+
+- `gitlet global-log`
+
+  ```java
+  void globalLog(){
+      List<String> commitList = Utiles.plainFilenamesIn(OBJECT_DIR);
+      for(commitHashID in commitList){
+          print();
+      }
+  }
+  ```
+
+- `gitlet find [message]`
+
+  ```java
+  void find(String message){
+      List<String> commitList = Utiles.plainFilenamesIn(OBJECT_DIR);
+      boolean found=false;
+      for(commitHashID in commitList){
+          if (commit.containMessage(message)){
+              print(commitHashID);
+              found=true;
+          }
+      }
+      if(!found){
+          "Found no commit with that message.";
+      }
+  }
+  ```
+
+- `gitlet status`
+
+  ```java
+  void status(){
+      "=== Branches ===";
+      *master;
+  
+      "=== Staged Files ===";
+      stage中stauts为ADDED;
+      "=== Removed Files ===";
+      stage中stauts为REMOVED;
+  
+      "=== Modifications Not Staged For Commit ===";
+      junk.txt (deleted);
+      wug3.txt (modified);
+  
+      "=== Untracked Files ===";
+      random.stuff;
+  }
+  ```
+
+  
 
 ## Commit
 
@@ -140,6 +204,7 @@
 ### methods
 
 - `boolean contain(String hashID)` stage中是否有一样的文件
+- `boolean containMessage(String s)` message中是否包含s
 
 ## Stage
 
