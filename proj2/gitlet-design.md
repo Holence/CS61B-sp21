@@ -10,15 +10,13 @@
     a1/
       b2xxxx # hashID of Commit (Commit的Serialization)
     c3/
-      b4xxxx # hashID of Commit's stage (commit时的“文件-hashID”映射，状态符全部为UNCHANGED)
-    e5/
-      f6xxxx # hashID of file (任何staged或comitted的文件，只增不删)
+      b4xxxx # hashID of file (任何staged或comitted的文件，只增不删)
   refs/
     heads/ # Branch
       master (master's tip commit的hashID)
       deputy (其他branch's tip commit的hashID)
   HEAD # 当前指向的commit的hashID
-  stage # 类似.git中的index文件，保存当前的“文件-hashID”映射，状态符为ADDED、REMOVED的表示add和rm的
+  stage # 类似.git中的index文件，保存“文件-hashID”映射，有unchanged、added、removed三个类别
 ```
 
 ## Repository
@@ -57,9 +55,6 @@
 - `gitlet add [filename]`
 
   ```java
-  // stage中state为ADDED的是否有一样的文件
-  boolean containAdd(String hashID);
-  
   void add(String filename){
       if (filename not exist){
           "File does not exist.";
@@ -68,10 +63,10 @@
       fileHashID = hashFile(filename);
       if (!HEAD_Commit.contain(fileHashID)){
           // 最新的Commit中不包含file
-          if (!containAdd(fileHashID)){
+          if (!stage.containAdd(fileHashID)){
               // staging area的ADDED中不包含file
               复制file到objects;
-              新建或更新stage中对应file的state为ADDED;
+              stage.add(file);
           }
       }
       else{
@@ -79,33 +74,29 @@
           // 两种可能，不管咋样，都变为UNCHANGED就行了
           // ①file修改后add了，又修改返回了上一个Commit中的样子
           // ②rm file后，又添加了一个一模一样的回来
-          更新stage中对应file的state为UNCHANGED;
+          stage.changeState(file, "UNCHANGED");
           // 不用删掉object中的之前add的Blob
           // git中用prune去除dangling object
       }
   }
   ```
-
+  
 - `gitlet commit [message]`
 
   ```java
-  // stage中是否有state为ADDED或REMOVED的
-  boolean hasStaged();
-  
   void commit(String message){
-      if (!hasStaged()){
+      if (!stage.hasStaged()){
           "No changes added to the commit.";
       }
       if (message.isEmpty()){
           "Please enter a commit message.";        
       }
   
-      把stage中state为REMOVED的删除;
-      把stage中所有state设为UNCHANGED;
-      计算hashID，复制到object;
+      把stage中removed清空;
+      把stage中的added并入unchanged;
       Commit c = new Commit();
       c.setMessage(message);
-      c.setstage(hashID);
+      c.setTracked(stage.getUnchanged());
       c.setCurrentTimestamp();
       c.parent=HEAD;
   
@@ -114,17 +105,17 @@
       HEAD存储branch;
   }
   ```
-
+  
 - `gitlet rm [filename]`
 
   ```java
   void remove(String filename){
       fileHashID = hashFile(filename);
-      if (containAdd(fileHashID)){
-          更新stage中对应file的state为UNCHANGED;
+      if (stage.containAdd(fileHashID)){
+          stage.changeState(file, "UNCHANGED");
       }
       else if (HEAD_Commit.contain(fileHashID)){
-          更新stage中对应file的state为REMOVED;
+          stage.changeState(file, "REMOVED");
           如果文件在的话，删除文件;
       }
       else{
@@ -184,23 +175,23 @@
       "deputy";
   
       "=== Staged Files ===";
-      stage中stauts为ADDED;
+      stage.getAdded();
       // 即使在这里出现，也可能在(deleted)或(modified)中再次出现
   
       "=== Removed Files ===";
-      stage中stauts为REMOVED;
+      stage.getRemoved();
       // 即使在这里出现，也可能在Untracked中再次出现
   
       "=== Modifications Not Staged For Commit ===";
       // (deleted)
-      stage中stauts不为REMOVED的文件名 且 现在not exist了;
+      stage中不为REMOVED的文件名 且 现在not exist了;
   
       // (modified)
-      stage中stauts不为REMOVED的文件 且 被修改后hashID不一样了;
+      stage中不为REMOVED的文件名 且 hashID不一样了;
   
       "=== Untracked Files ===";
       不在stage中 且 exist;
-      stage中status为REMOVED的文件名 且 现在exist了;
+      stage.getRemoved() 且 现在exist了;
   }
   ```
 
@@ -220,12 +211,12 @@
 
   ```java
   void checkoutFileInCommit(String filename, String commitID){
+      // commitID要和git一样支持4位以上的缩写
       "No commit with that id exists.";
       "File does not exist in that commit.";
       如果有的话，删除;
       复制objects;
   }
-  // commitID要和git一样支持4位以上的缩写
   ```
 
 - `gitlet checkout [branchname]`
@@ -247,7 +238,8 @@
       // gitlet没有detached HEAD state，所以这个不能让外界调用
       清空目录;
       复制commit的objects;
-      复制commit的stage;
+      stage.clear();
+      stage.setUnchanged(commit.getTracked())
       更新HEAD;
   }
   ```
@@ -340,7 +332,7 @@
 
   merge时不允许staging area有东西！！！
   
-  merge时允许有Untracked或Modifications Not Staged，仅当merge不会影响到这些文件（也就是下表的Command为空的情况）。如果Command不为空，则一定会对这些文件overwrite或delete，则应该报错"There is an untracked file in the way; delete it, or add and commit it first."
+  merge时允许当前工作区有Untracked或Modifications Not Staged，仅当merge不会影响到这些文件时（也就是下表的Command为空的情况）。如果Command不为空，则一定会对这些文件overwrite或delete，则应该报错"There is an untracked file in the way; delete it, or add and commit it first."
 
   > 其实完全可以通过“在Command之前备份、Command之后复原”，来保留Untracked或Modifications Not Staged。
   >
@@ -358,16 +350,20 @@
   | A     | A!     | A!      | A!           | -                                 |
   | A     | A!     | A?      | Conflict格式 | add A                             |
   
-  
 
 ## Commit
 
 ### variables
 
 - `String message`
+
 - `String timestamp`
-- `List<String> parent` ？？？？？？
-- `Stage stage` commit的stage失去了staging area的作用，state都为`UNCHANGED`
+
+- `List<String> parents`
+
+- `Map<String, String> tracked`
+
+  > 从filepath到HashID的映射（因为Gitlet是flat的，所以不涉及文件夹路径，只是文件名）
 
 ### methods
 
@@ -376,18 +372,17 @@
 
 ## Stage
 
-作为repo的stage（当前的working directory以及staging area）或 commit的stage
+repo当前的working directory以及staging area
 
-`Map<String, StageFile>` 从filepath到StageFile的映射（因为Gitlet是flat的，所以不涉及文件夹路径，只是文件名）
+### variables
 
-Inner Class StageFile：
+- `Map<String, String> unchanged`
+- `Map<String, String> added`
+- `Map<String, String> removed`
 
-- `String hashID`
+> 都是从filepath到HashID的映射（因为Gitlet是flat的，所以不涉及文件夹路径，只是文件名）
 
-- `int state`
+### methods
 
-  > `UNCHANGED` 未改变
-  >
-  > `STAGED` add
-  >
-  > `REMOVED` rm
+- `boolean containAdd(String hashID)` stage中added是否有一样的文件
+- `boolean hasStaged()` stage中added或removed非空
