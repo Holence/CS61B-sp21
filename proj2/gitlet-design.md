@@ -322,18 +322,20 @@
   // 如果有conflict，"Encountered a merge conflict."
   ```
 
-  Current和Merged的一样，`continue`就行了
+  ---
 
+  Current和Merged的一样，`continue`就行了
+  
   > 如果全部文件都是这样，将导致commit中没有任何修改，会触发commit中的报错，gitlet要求是这样的。
   >
   > 然而git中允许没有任何修改的merge commit
 
   Current和Merged不一样，才需要额外的Command
-
-  merge时不允许staging area有东西！！！
   
-  merge时允许当前工作区有Untracked或Modifications Not Staged，仅当merge不会影响到这些文件时（也就是下表的Command为空的情况）。如果Command不为空，则一定会对这些文件overwrite或delete，则应该报错"There is an untracked file in the way; delete it, or add and commit it first."
+  merge时不允许staging area有东西！！！
 
+  merge时允许当前工作区有Untracked或Modifications Not Staged，仅当merge不会影响到这些文件时（也就是下表的Command为空的情况）。如果Command不为空，则一定会对这些文件overwrite或delete，则应该报错"There is an untracked file in the way; delete it, or add and commit it first."
+  
   > 其实完全可以通过“在Command之前备份、Command之后复原”，来保留Untracked或Modifications Not Staged。
   >
   > 但既然git也是这个德性，那就算了吧……
@@ -350,6 +352,35 @@
   | A     | A!     | A!      | A!           | -                                 |
   | A     | A!     | A?      | Conflict格式 | add A                             |
   
+  ---
+  
+  关于split point，有向无环图的最近交点。思路是从两者往根回溯，若能走到对方的节点，则没有split point，否则走到的最近的相同节点是split point。考虑用BFS的深度，即回溯树的深度，split point是两棵树“相交且深度同时最小”的节点。若二者之一属于对方的树，那么没有split。（两次BFS，把commitID和深度的映射分别记录在两个`Map<String, int>`中）
+  
+  “相交且深度同时最小”：取其中一棵树，按照深度从小到大遍历，若节点属于另一棵树，且在另一棵树中的深度小于MIN，则记下来（如果在另一棵）
+  
+  ```java
+  //              C6
+  //             /  \
+  // C1 - C2 - C5 - C11 - C12 (*current)
+  //        \  /
+  //         C3 (branch)
+  // 没有split point
+  
+  //         C3 - C7 - C8 (branch)
+  //        /    /
+  // C1 - C2 - C4 - C9 (*current)
+  // C4是split point
+  
+  //         C3 - C7 - C8 (branch)
+  //        /  \
+  // C1 - C2 - C5 - C6 (*current)
+  // C3是split point
+  
+  //         C5 - C6 - C7 (branch)
+  //        /  \
+  // C1 - C2 - C3 - C8 (*current)
+  // C3是split point
+  ```
 
 ## Commit
 
