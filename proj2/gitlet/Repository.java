@@ -1,19 +1,19 @@
 package gitlet;
 
 import java.io.File;
+import java.util.Date;
+
 import static gitlet.Utils.*;
 
-// TODO: any imports you need here
-
 /** Represents a gitlet repository.
- *  TODO: It's a good idea to give a description here of what else this Class
+ *  It's a good idea to give a description here of what else this Class
  *  does at a high level.
  *
- *  @author TODO
+ *  @author Holence
  */
 public class Repository {
     /**
-     * TODO: add instance variables here.
+     * add instance variables here.
      *
      * List all instance variables of the Repository class here with a useful
      * comment above them describing what that variable represents and how that
@@ -24,6 +24,115 @@ public class Repository {
     public static final File CWD = new File(System.getProperty("user.dir"));
     /** The .gitlet directory. */
     public static final File GITLET_DIR = join(CWD, ".gitlet");
+    public static final File OBJECTS_DIR = join(GITLET_DIR, "objects");
+    public static final File BRANCH_DIR = join(GITLET_DIR, "refs/heads");
+    public static final File HEAD_FILE = join(GITLET_DIR, "HEAD");
+    public static final File STAGE_FILE = join(GITLET_DIR, "stage");
 
-    /* TODO: fill in the rest of this class. */
+    private static Stage stage;
+
+    public static void checkInitialized() {
+        if (!GITLET_DIR.exists()) {
+            message("Not in an initialized Gitlet directory.");
+            System.exit(0);
+        }
+    }
+
+    /**
+     * branch的名字
+     * @return
+     */
+    private static String getBranch() {
+        return readContentsAsString(HEAD_FILE);
+    }
+
+    private static void writeBranch(String branchName) {
+        writeContents(join(BRANCH_DIR, getBranch()), branchName);
+    }
+
+    /**
+     * branch's tip里存的commitHashID
+     * @return
+     */
+    private static String getHead() {
+        return readContentsAsString(join(BRANCH_DIR, getBranch()));
+    }
+
+    private static void writeHead(String commitHashID) {
+        writeContents(join(BRANCH_DIR, getBranch()), commitHashID);
+    }
+
+    public static void init() {
+        if (GITLET_DIR.exists()) {
+            message("A Gitlet version-control system already exists in the current directory.");
+            System.exit(0);
+        }
+
+        // 建立.gitlet文件树;
+        GITLET_DIR.mkdirs();
+        OBJECTS_DIR.mkdirs();
+        BRANCH_DIR.mkdirs();
+        stage = new Stage();
+        stage.save();
+        writeContents(HEAD_FILE, "master");
+
+        // 最初的commit的两个parent都是空字符串
+        Commit c = new Commit("initial commit", new Date(0), "", stage.getUnchanged());
+        c.save();
+        writeHead(c.getHashID());
+    }
+
+    public static void add(String filename) {
+        stage = Stage.load();
+
+        File f = join(CWD, filename);
+        if (!f.exists()) {
+            message("File does not exist.");
+            System.exit(0);
+        }
+
+        String fileHashID = sha1(readContents(f));
+
+        if (!Commit.load(getHead()).containsTracked(fileHashID)) {
+            // 最新的Commit中不包含file
+            if (!stage.containsAdded(fileHashID)) {
+                // staging area的ADDED中不包含file
+
+                // 复制file到objects;
+                Blob.writeBlob(readContents(f), fileHashID);
+                // stage的added中写入;
+                stage.addAdded(filename, fileHashID);
+            }
+        } else {
+            // 最新的Commit中包含file
+            // 三种可能，不管咋样，都变为UNCHANGED就行了
+            // 1. 和上一个Commit时比没有任何变化
+            // 2. file修改后add了，又修改返回了上一个Commit中的样子
+            // 3. rm file后，又添加了一个一模一样的回来
+            stage.setBackToUnchanged(filename, fileHashID);
+            // 不用删掉object中的之前add的Blob
+            // git中用prune去除dangling object
+        }
+        stage.save();
+    }
+
+    public static void commit(String m) {
+        stage = Stage.load();
+
+        if (!stage.hasStaged()) {
+            message("No changes added to the commit.");
+            System.exit(0);
+        }
+        if (m.isEmpty()) {
+            message("Please enter a commit message.");
+            System.exit(0);
+        }
+
+        stage.performCommit();
+        Commit c = new Commit(m, new Date(), getHead(), stage.getUnchanged());
+        c.save();
+        writeHead(c.getHashID());
+        stage.save();
+    }
+
 }

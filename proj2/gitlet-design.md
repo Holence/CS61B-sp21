@@ -15,7 +15,7 @@
     heads/ # Branch
       master (master's tip commit的hashID)
       deputy (其他branch's tip commit的hashID)
-  HEAD # 当前指向的commit的hashID
+  HEAD # 当前指向的branch
   stage # 类似.git中的index文件，保存“文件-hashID”映射，有unchanged、added、removed三个类别
 ```
 
@@ -71,9 +71,10 @@
       }
       else{
           // 最新的Commit中包含file
-          // 两种可能，不管咋样，都变为UNCHANGED就行了
-          // ①file修改后add了，又修改返回了上一个Commit中的样子
-          // ②rm file后，又添加了一个一模一样的回来
+          // 三种可能，不管咋样，都变为UNCHANGED就行了
+          // 1. 和上一个Commit时比没有任何变化
+          // 2. file修改后add了，又修改返回了上一个Commit中的样子
+          // 3. rm file后，又添加了一个一模一样的回来
           stage.changeState(file, "UNCHANGED");
           // 不用删掉object中的之前add的Blob
           // git中用prune去除dangling object
@@ -102,7 +103,6 @@
   
       存储commit到object;
       branch存储c.hashcode();
-      HEAD存储branch;
   }
   ```
   
