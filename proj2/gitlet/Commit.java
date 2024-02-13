@@ -4,6 +4,7 @@ import static gitlet.Utils.*;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -66,11 +67,26 @@ public class Commit implements Dumpable {
     }
 
     public static Commit load(String commitHashID) {
-        return Obj.readCommit(commitHashID);
+        try {
+            if (commitHashID.length() == 40) {
+                return readObject(Obj.getPath(commitHashID), Commit.class);
+            } else {
+                // 支持短链访问
+                List<String> allObjHashID = Obj.getAllObjHashID();
+                for (String hashID : allObjHashID) {
+                    if (commitHashID.equals(hashID.substring(0, commitHashID.length()))) {
+                        return readObject(Obj.getPath(hashID), Commit.class);
+                    }
+                }
+                return null;
+            }
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     public void save() {
-        Obj.writeObj(serialize(this), hashID);
+        writeObject(Obj.getPath(getHashID()), this);
     }
 
     public SortedMap<String, String> getTracked() {

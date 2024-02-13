@@ -1,19 +1,35 @@
 package gitlet;
 
+import static gitlet.Repository.CWD;
 import static gitlet.Repository.STAGE_FILE;
 import static gitlet.Utils.*;
 
+import java.util.List;
 import java.util.SortedMap;
+import java.util.SortedSet;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 public class Stage implements Dumpable {
     // 从filename到hashID的映射
-    private SortedMap<String, String> unchanged = new TreeMap<>();
-    private SortedMap<String, String> added = new TreeMap<>();
-    private SortedMap<String, String> removed = new TreeMap<>();
+    private SortedMap<String, String> unchanged;
+    private SortedMap<String, String> added;
+    private SortedMap<String, String> removed;
 
     public enum STATE {
         UNCHANGED, ADDED, REMOVED
+    }
+
+    Stage() {
+        unchanged = new TreeMap<>();
+        added = new TreeMap<>();
+        removed = new TreeMap<>();
+    }
+
+    Stage(SortedMap<String, String> unchanged) {
+        this.unchanged = unchanged;
+        added = new TreeMap<>();
+        removed = new TreeMap<>();
     }
 
     @Override
@@ -55,6 +71,67 @@ public class Stage implements Dumpable {
 
     public void save() {
         writeObject(STAGE_FILE, this);
+    }
+
+    /**
+     * stage中不为REMOVED的文件名 且 现在not exist了;
+     * @return
+     */
+    public SortedSet<String> getDeleted() {
+        List<String> cwdFileList = plainFilenamesIn(CWD);
+        SortedSet<String> sortedSet = new TreeSet<>();
+        for (String filename : unchanged.keySet()) {
+            if (!cwdFileList.contains(filename)) {
+                sortedSet.add(filename);
+            }
+        }
+        for (String filename : added.keySet()) {
+            if (!cwdFileList.contains(filename)) {
+                sortedSet.add(filename);
+            }
+        }
+        return sortedSet;
+    }
+
+    /**
+     * stage中不为REMOVED的文件名 且 hashID不一样了;
+     * @return
+     */
+    public SortedSet<String> getModified() {
+        List<String> cwdFileList = plainFilenamesIn(CWD);
+        SortedSet<String> sortedSet = new TreeSet<>();
+        for (String filename : unchanged.keySet()) {
+            if (cwdFileList.contains(filename) && !Blob.getHashID(join(CWD, filename)).equals(unchanged.get(filename))) {
+                sortedSet.add(filename);
+            }
+        }
+        for (String filename : added.keySet()) {
+            if (cwdFileList.contains(filename) && !Blob.getHashID(join(CWD, filename)).equals(added.get(filename))) {
+                sortedSet.add(filename);
+            }
+        }
+        return sortedSet;
+    }
+
+    /**
+     * Untracked
+     * exist但在stage中不是added或unchanged
+     * exist但在stage中是removed
+     * @return
+     */
+    public SortedSet<String> getUntracked() {
+        List<String> cwdFileList = plainFilenamesIn(CWD);
+        SortedSet<String> sortedSet = new TreeSet<>();
+        for (String filename : cwdFileList) {
+            if (unchanged.containsKey(filename) || added.containsKey(filename)) {
+                continue;
+            } else {
+                // exist但在stage中不是added或unchanged
+                // exist但在stage中是removed
+                sortedSet.add(filename);
+            }
+        }
+        return sortedSet;
     }
 
     /**

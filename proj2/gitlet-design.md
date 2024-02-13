@@ -232,19 +232,20 @@
           "No need to checkout the current branch.";
           exit(0);
       }
-      if (hasUntracked()){
-          "There is an untracked file in the way; delete it, or add and commit it first.";        
-      }
       checkoutCommit(branch);
+      更新HEAD;
   }
   
   private void checkoutCommit(String commitID){
       // gitlet没有detached HEAD state，所以这个不能让外界调用
+      "No commit with that id exists.";
+      if (hasUntracked()){
+          "There is an untracked file in the way; delete it, or add and commit it first.";        
+      }
       清空目录;
       复制commit的objects;
       stage.clear();
-      stage.setUnchanged(commit.getTracked())
-      更新HEAD;
+      stage.setUnchanged(commit.getTracked());
   }
   ```
 
@@ -276,17 +277,13 @@
   // 和 git reset --hard [commitID] 一样
   // 可以跨branch随意reset，只用把branch的指针设为commitID就行了
   void reset(String commitID){
-      "No commit with that id exists.";
-      if (hasUntracked()){
-          "There is an untracked file in the way; delete it, or add and commit it first.";        
-      }
       checkoutCommit(commitID);
       设置branch为commitID;
       // 不用管branch中的commit
       // git中会在一定的expire时间后自动prune dangling commit
   }
   ```
-
+  
 - `gitlet merge [branchname]`
 
   merge branch into current 用branch修改current

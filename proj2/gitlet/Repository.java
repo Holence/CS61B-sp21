@@ -3,7 +3,6 @@ package gitlet;
 import java.io.File;
 import java.util.Date;
 import java.util.List;
-import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -65,6 +64,24 @@ public class Repository {
      */
     private static void createBranch(String branchName) {
         writeContents(join(BRANCH_DIR, branchName), getHead());
+    }
+
+    /**
+     * 是否存在名为branchName的branch
+     * @param branchName
+     * @return
+     */
+    private static boolean isBranchExist(String branchName) {
+        return join(BRANCH_DIR, branchName).exists();
+    }
+
+    /**
+     * 从refs/heads/[branchName]中读取commitHashID
+     * @param branchName
+     * @return
+     */
+    private static String getBranchTip(String branchName) {
+        return readContentsAsString(join(BRANCH_DIR, branchName));
     }
 
     /**
@@ -143,7 +160,7 @@ public class Repository {
                 // staging area的ADDED中不包含file
 
                 // 复制file到objects
-                Obj.writeObj(readContents(f), fileHashID);
+                Blob.writeBlob(f, fileHashID);
                 // stage的added中写入（如果在unchanged或是removed中，则要去除）
                 stage.changeState(filename, fileHashID, Stage.STATE.ADDED);
             }
@@ -222,11 +239,7 @@ public class Repository {
     public static void globalLog() {
         List<String> fileList = plainFilenamesIn(OBJECTS_DIR);
         for (String filename : fileList) {
-            try {
-                message(Obj.readCommit(filename).getLog());
-            } catch (IllegalArgumentException e) {
-                continue;
-            }
+            message(Commit.load(filename).getLog());
         }
     }
 
@@ -235,18 +248,15 @@ public class Repository {
         Commit c;
         boolean found = false;
         for (String filename : fileList) {
-            try {
-                c = Obj.readCommit(filename);
-                if (c.getMessage().contains(s)) {
-                    message(c.getHashID());
-                    found = true;
-                }
-            } catch (IllegalArgumentException e) {
-                continue;
+            c = Commit.load(filename);
+            if (c.getMessage().contains(s)) {
+                message(c.getHashID());
+                found = true;
             }
         }
         if (!found) {
             message("Found no commit with that message.");
+            System.exit(0);
         }
     }
 
@@ -254,7 +264,6 @@ public class Repository {
         // entry in lexicographic order
         loadStage();
 
-        // begin branch
         message("=== Branches ===");
         String currentBranch = getBranch();
         for (String filename : plainFilenamesIn(BRANCH_DIR)) {
@@ -264,80 +273,101 @@ public class Repository {
                 message(filename);
             }
         }
-        // end branch
-
-        SortedMap<String, String> unchangedMap = stage.getUnchanged();
-        SortedMap<String, String> addedMap = stage.getAdded();
-        SortedMap<String, String> removedMap = stage.getRemoved();
-        Set<String> unchangedSet = unchangedMap.keySet();
-        Set<String> addedSet = addedMap.keySet();
-        Set<String> removedSet = removedMap.keySet();
-        List<String> cwdFileList = plainFilenamesIn(CWD);
-
-        SortedSet<String> sortedSet = new TreeSet<>();
 
         message("");
         message("=== Staged Files ===");
         // 即使在这里出现，也可能在(deleted)或(modified)中再次出现
-        for (String filename : addedSet) {
+        for (String filename : stage.getAdded().keySet()) {
             message(filename);
         }
 
         message("");
         message("=== Removed Files ===");
         // 即使在这里出现，也可能在Untracked中再次出现
-        for (String filename : removedSet) {
+        for (String filename : stage.getRemoved().keySet()) {
             message(filename);
         }
 
         message("");
         message("=== Modifications Not Staged For Commit ===");
-        // (deleted)
-        // stage中不为REMOVED的文件名 且 现在not exist了;
-        for (String filename : unchangedSet) {
-            if (!cwdFileList.contains(filename)) {
-                sortedSet.add(filename + " (deleted)");
-            }
+        SortedSet<String> sortedSet = new TreeSet<>();
+        for (String filename : stage.getDeleted()) {
+            sortedSet.add(filename + " (deleted)");
         }
-        for (String filename : addedSet) {
-            if (!cwdFileList.contains(filename)) {
-                sortedSet.add(filename + " (deleted)");
-            }
+        for (String filename : stage.getModified()) {
+            sortedSet.add(filename + " (modified)");
         }
-        // (modified)
-        // stage中不为REMOVED的文件名 且 hashID不一样了;
-        for (String filename : unchangedSet) {
-            if (!Blob.getHashID(join(CWD, filename)).equals(unchangedMap.get(filename))) {
-                sortedSet.add(filename + " (modified)");
-            }
-        }
-        for (String filename : addedSet) {
-            if (!Blob.getHashID(join(CWD, filename)).equals(addedMap.get(filename))) {
-                sortedSet.add(filename + " (modified)");
-            }
-        }
-
         for (String s : sortedSet) {
             message(s);
         }
 
         message("");
         message("=== Untracked Files ===");
-        sortedSet.clear();
-
-        for (String filename : cwdFileList) {
-            if (unchangedSet.contains(filename) || addedSet.contains(filename)) {
-                continue;
-            } else {
-                // exist但在stage中不是added或unchanged;
-                // exist但在stage中是removed;
-                sortedSet.add(filename);
-            }
-        }
-        for (String s : sortedSet) {
+        for (String s : stage.getUntracked()) {
             message(s);
         }
         message("");
+    }
+
+    public static void checkoutFileInHeadDCommit(String filename) {
+        checkoutFileInCommit(getHead(), filename);
+    }
+
+    public static void checkoutFileInCommit(String commitHashID, String filename) {
+        Commit c = Commit.load(commitHashID);
+        if (c == null) {
+            message("No commit with that id exists.");
+            System.exit(0);
+        }
+        String fileHashID = c.getTracked().get(filename);
+        if (fileHashID == null) {
+            message("File does not exist in that commit.");
+            System.exit(0);
+        }
+        File f = join(CWD, filename);
+        restrictedDelete(f);
+        writeContents(f, Blob.readBlob(fileHashID));
+    }
+
+    private static void checkoutCommit(String commitHashID) {
+        loadStage();
+        if (!stage.getUntracked().isEmpty()) {
+            message("There is an untracked file in the way; delete it, or add and commit it first.");
+            System.exit(0);
+        }
+
+        Commit c = Commit.load(commitHashID);
+        if (c == null) {
+            message("No commit with that id exists.");
+            System.exit(0);
+        }
+
+        // 清空
+        for (String filename : plainFilenamesIn(CWD)) {
+            restrictedDelete(join(CWD, filename));
+        }
+
+        // 写入
+        SortedMap<String, String> tracked = c.getTracked();
+        for (String filename : tracked.keySet()) {
+            writeContents(join(CWD, filename), Blob.readBlob(tracked.get(filename)));
+        }
+
+        stage = new Stage(tracked);
+        saveStage();
+    }
+
+    public static void checkoutBranch(String branchname) {
+        if (!isBranchExist(branchname)) {
+            message("No such branch exists.");
+            System.exit(0);
+        }
+        if (getBranch() == branchname) {
+            message("No need to checkout the current branch.");
+            System.exit(0);
+        }
+        checkoutCommit(getBranchTip(branchname));
+        writeBranch(branchname);
     }
 
     public static void branch(String branchname) {

@@ -18,14 +18,20 @@ public class Main {
         }
     }
 
+    public static void checkOperands(String arg, String exact) {
+        if (!arg.equals(exact)) {
+            message("Incorrect operands.");
+            System.exit(0);
+        }
+    }
+
     public static void main(String[] args) {
         if (args.length == 0) {
             message("Please enter a command.");
             System.exit(0);
         }
-        String firstArg = args[0];
 
-        switch (firstArg) {
+        switch (args[0]) {
         case "init":
             checkOperands(args, 1);
             Repository.init();
@@ -64,6 +70,28 @@ public class Main {
             Repository.checkInitialized();
             checkOperands(args, 1);
             Repository.status();
+            break;
+        case "checkout":
+            Repository.checkInitialized();
+            switch (args.length) {
+            // checkout -- [filename]
+            case 3:
+                checkOperands(args[1], "--");
+                Repository.checkoutFileInHeadDCommit(args[2]);
+                break;
+            // checkout [commitHashID] -- [filename]
+            case 4:
+                checkOperands(args[2], "--");
+                Repository.checkoutFileInCommit(args[1], args[3]);
+                break;
+            // checkout [branchname]
+            case 2:
+                Repository.checkoutBranch(args[1]);
+                break;
+            default:
+                message("Incorrect operands.");
+                System.exit(0);
+            }
             break;
         case "branch":
             Repository.checkInitialized();
