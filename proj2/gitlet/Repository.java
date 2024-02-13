@@ -39,28 +39,56 @@ public class Repository {
     }
 
     /**
-     * branch的名字
+     * 从HEAD中读取branch的名字
      * @return
      */
     private static String getBranch() {
         return readContentsAsString(HEAD_FILE);
     }
 
+    /**
+     * 在HEAD中写入branchname
+     * @param branchName
+     */
     private static void writeBranch(String branchName) {
-        writeContents(join(BRANCH_DIR, getBranch()), branchName);
+        writeContents(HEAD_FILE, branchName);
     }
 
     /**
-     * branch's tip里存的commitHashID
+     * 从refs/heads/[currentbranch]中读取commitHashID
      * @return
      */
     private static String getHead() {
         return readContentsAsString(join(BRANCH_DIR, getBranch()));
     }
 
+    /**
+     * 在refs/heads/[currentbranch]中写入commitHashID
+     * @param commitHashID
+     */
     private static void writeHead(String commitHashID) {
         writeContents(join(BRANCH_DIR, getBranch()), commitHashID);
     }
+
+    /**
+     * 读取stage
+     */
+    private static void getStage() {
+        if (!STAGE_FILE.exists()) {
+            stage = new Stage();
+        } else {
+            stage = Stage.load();
+        }
+    }
+
+    /**
+     * 写入stage
+     */
+    private static void writeStage() {
+        stage.save();
+    }
+
+    /////////////////////////////////////////////////////////////////
 
     public static void init() {
         if (GITLET_DIR.exists()) {
@@ -72,18 +100,18 @@ public class Repository {
         GITLET_DIR.mkdirs();
         OBJECTS_DIR.mkdirs();
         BRANCH_DIR.mkdirs();
-        stage = new Stage();
-        stage.save();
-        writeContents(HEAD_FILE, "master");
+        writeBranch("master");
 
+        getStage();
         // 最初的commit的两个parent都是空字符串
         Commit c = new Commit("initial commit", new Date(0), "", stage.getUnchanged());
         c.save();
         writeHead(c.getHashID());
+        writeStage();
     }
 
     public static void add(String filename) {
-        stage = Stage.load();
+        getStage();
 
         File f = join(CWD, filename);
         if (!f.exists()) {
@@ -113,11 +141,12 @@ public class Repository {
             // 不用删掉object中的之前add的Blob
             // git中用prune去除dangling object
         }
-        stage.save();
+
+        writeStage();
     }
 
     public static void commit(String m) {
-        stage = Stage.load();
+        getStage();
 
         if (!stage.hasStaged()) {
             message("No changes added to the commit.");
@@ -132,7 +161,8 @@ public class Repository {
         Commit c = new Commit(m, new Date(), getHead(), stage.getUnchanged());
         c.save();
         writeHead(c.getHashID());
-        stage.save();
+
+        writeStage();
     }
 
 }
