@@ -82,8 +82,9 @@ public class Commit implements Dumpable {
      * @param fileHashID
      * @return
       */
-    public boolean containsTracked(String fileHashID) {
-        return tracked.values().contains(fileHashID);
+    public boolean containsTracked(String filename, String fileHashID) {
+        String s = tracked.get(filename);
+        return s != null && s.equals(fileHashID);
     }
 
     public boolean hasParentCommit() {
@@ -101,8 +102,7 @@ public class Commit implements Dumpable {
                 commit %s
                 Date: %s
                 %s
-                %s
-                """, hashID, timestamp, message, tracked.toString());
+                """, hashID, timestamp, message);
     }
 
     public String getMessage() {

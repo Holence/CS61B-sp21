@@ -137,9 +137,9 @@ public class Repository {
         String fileHashID = Blob.getHashID(f);
 
         // 是否恢复到HeadCommit中的样子
-        if (!getHeadCommit().containsTracked(fileHashID)) {
+        if (!getHeadCommit().containsTracked(filename, fileHashID)) {
             // HeadCommit中不包含file
-            if (!stage.containsAdded(fileHashID)) {
+            if (!stage.containsAdded(filename, fileHashID)) {
                 // staging area的ADDED中不包含file
 
                 // 复制file到objects
@@ -189,12 +189,12 @@ public class Repository {
 
         loadStage();
         String fileHashID = Blob.getHashID(f);
-        if (stage.containsAdded(fileHashID)) {
+        if (stage.containsAdded(filename, fileHashID)) {
             // stage中为added
             // rm表示unstage
             String oldHashID = getHeadCommit().getTracked().get(filename);
             stage.changeState(filename, oldHashID, Stage.STATE.UNCHANGED);
-        } else if (stage.containsUnchanged(fileHashID)) {
+        } else if (stage.containsUnchanged(filename, fileHashID)) {
             // stage中为unchanged（保持HeadCommit中的样子）
             // rm表示删除
             stage.changeState(filename, fileHashID, Stage.STATE.REMOVED);

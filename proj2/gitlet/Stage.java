@@ -27,16 +27,18 @@ public class Stage implements Dumpable {
         return unchanged;
     }
 
-    public boolean containsUnchanged(String fileHashID) {
-        return unchanged.values().contains(fileHashID);
+    public boolean containsUnchanged(String filename, String fileHashID) {
+        String s = unchanged.get(filename);
+        return s != null && s.equals(fileHashID);
     }
 
     public SortedMap<String, String> getAdded() {
         return added;
     }
 
-    public boolean containsAdded(String fileHashID) {
-        return added.values().contains(fileHashID);
+    public boolean containsAdded(String filename, String fileHashID) {
+        String s = added.get(filename);
+        return s != null && s.equals(fileHashID);
     }
 
     public SortedMap<String, String> getRemoved() {
