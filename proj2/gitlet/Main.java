@@ -45,6 +45,21 @@ public class Main {
             checkOperands(args, 2);
             Repository.remove(args[1]);
             break;
+        case "log":
+            Repository.checkInitialized();
+            checkOperands(args, 1);
+            Repository.log();
+            break;
+        case "global-log":
+            Repository.checkInitialized();
+            checkOperands(args, 1);
+            Repository.globalLog();
+            break;
+        case "find":
+            Repository.checkInitialized();
+            checkOperands(args, 2);
+            Repository.find(args[1]);
+            break;
         default:
             message("No command with that name exists.");
         }

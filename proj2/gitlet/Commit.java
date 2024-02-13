@@ -1,6 +1,5 @@
 package gitlet;
 
-import static gitlet.Repository.OBJECTS_DIR;
 import static gitlet.Utils.*;
 
 import java.text.SimpleDateFormat;
@@ -24,21 +23,29 @@ public class Commit implements Dumpable {
      */
 
     /** The message of this Commit. */
+    private String hashID;
     private String message;
     private String timestamp;
     private String parent1 = "";
     private String parent2 = "";
-    private Map<String, String> tracked = new HashMap<>();
+    private Map<String, String> tracked;
 
-    Commit(String m, Date d, String parent, Map<String, String> tracked) {
+    Commit(String m, Date d, String parent1, Map<String, String> tracked) {
         message = m;
         timestamp = formatDate(d);
-        parent1 = parent;
+        this.parent1 = parent1;
         this.tracked = tracked;
+        generateHashID();
+    }
+
+    public static Commit initCommit() {
+        // 最初的commit的两个parent都是空字符串
+        return new Commit("initial commit", new Date(0), "", new HashMap<>());
     }
 
     @Override
     public void dump() {
+        System.out.println(hashID);
         System.out.println(message);
         System.out.println(timestamp);
         System.out.println(parent1);
@@ -50,16 +57,20 @@ public class Commit implements Dumpable {
         return new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z").format(d);
     }
 
+    private void generateHashID() {
+        hashID = sha1(message, timestamp, parent1, parent2, tracked.toString());
+    }
+
     public String getHashID() {
-        return sha1(message, timestamp, parent1, parent2, tracked.toString());
+        return hashID;
     }
 
     public static Commit load(String commitHashID) {
-        return readObject(join(OBJECTS_DIR, commitHashID), Commit.class);
+        return Obj.readCommit(commitHashID);
     }
 
     public void save() {
-        Blob.writeBlob(serialize(this), getHashID());
+        Obj.writeObj(serialize(this), hashID);
     }
 
     /**
@@ -69,5 +80,27 @@ public class Commit implements Dumpable {
       */
     public boolean containsTracked(String fileHashID) {
         return tracked.values().contains(fileHashID);
+    }
+
+    public boolean hasParentCommit() {
+        return !parent1.isEmpty();
+    }
+
+    public Commit getParentCommit() {
+        return Commit.load(this.parent1);
+    }
+
+    public String getLog() {
+        // TODO: 如果是Merge: 4975af1 2c1ead1
+        return String.format("""
+                ===
+                commit %s
+                Date: %s
+                %s
+                """, hashID, timestamp, message);
+    }
+
+    public String getMessage() {
+        return message;
     }
 }

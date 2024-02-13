@@ -2,6 +2,7 @@ package gitlet;
 
 import java.io.File;
 import java.util.Date;
+import java.util.List;
 
 import static gitlet.Utils.*;
 
@@ -107,10 +108,9 @@ public class Repository {
         writeBranch("master");
 
         loadStage();
-        // 最初的commit的两个parent都是空字符串
-        Commit c = new Commit("initial commit", new Date(0), "", stage.getUnchanged());
+        Commit c = Commit.initCommit();
         c.save();
-        writeHead(Blob.getHashID(c));
+        writeHead(c.getHashID());
         saveStage();
     }
 
@@ -130,7 +130,7 @@ public class Repository {
                 // staging area的ADDED中不包含file
 
                 // 复制file到objects;
-                Blob.writeBlob(readContents(f), fileHashID);
+                Obj.writeObj(readContents(f), fileHashID);
                 // stage的added中写入;
                 stage.addAdded(filename, fileHashID);
             }
@@ -186,5 +186,48 @@ public class Repository {
             System.exit(0);
         }
         saveStage();
+    }
+
+    public static void log() {
+        Commit c = getHeadCommit();
+        while (true) {
+            message(c.getLog());
+            if (c.hasParentCommit()) {
+                c = c.getParentCommit();
+            } else {
+                break;
+            }
+        }
+    }
+
+    public static void globalLog() {
+        List<String> fileList = plainFilenamesIn(OBJECTS_DIR);
+        for (String filename : fileList) {
+            try {
+                message(Obj.readCommit(filename).getLog());
+            } catch (IllegalArgumentException e) {
+                continue;
+            }
+        }
+    }
+
+    public static void find(String s) {
+        List<String> fileList = plainFilenamesIn(OBJECTS_DIR);
+        Commit c;
+        boolean found = false;
+        for (String filename : fileList) {
+            try {
+                c = Obj.readCommit(filename);
+                if (c.getMessage().contains(s)) {
+                    message(c.getHashID());
+                    found = true;
+                }
+            } catch (IllegalArgumentException e) {
+                continue;
+            }
+        }
+        if (!found) {
+            message("Found no commit with that message.");
+        }
     }
 }
