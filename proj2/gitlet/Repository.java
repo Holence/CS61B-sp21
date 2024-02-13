@@ -70,10 +70,14 @@ public class Repository {
         writeContents(join(BRANCH_DIR, getBranch()), commitHashID);
     }
 
+    private static Commit getHeadCommit() {
+        return Commit.load(getHead());
+    }
+
     /**
      * 读取stage
      */
-    private static void getStage() {
+    private static void loadStage() {
         if (!STAGE_FILE.exists()) {
             stage = new Stage();
         } else {
@@ -84,7 +88,7 @@ public class Repository {
     /**
      * 写入stage
      */
-    private static void writeStage() {
+    private static void saveStage() {
         stage.save();
     }
 
@@ -102,26 +106,25 @@ public class Repository {
         BRANCH_DIR.mkdirs();
         writeBranch("master");
 
-        getStage();
+        loadStage();
         // 最初的commit的两个parent都是空字符串
         Commit c = new Commit("initial commit", new Date(0), "", stage.getUnchanged());
         c.save();
-        writeHead(c.getHashID());
-        writeStage();
+        writeHead(Blob.getHashID(c));
+        saveStage();
     }
 
     public static void add(String filename) {
-        getStage();
-
         File f = join(CWD, filename);
         if (!f.exists()) {
             message("File does not exist.");
             System.exit(0);
         }
 
-        String fileHashID = sha1(readContents(f));
+        loadStage();
+        String fileHashID = Blob.getHashID(f);
 
-        if (!Commit.load(getHead()).containsTracked(fileHashID)) {
+        if (!getHeadCommit().containsTracked(fileHashID)) {
             // 最新的Commit中不包含file
             if (!stage.containsAdded(fileHashID)) {
                 // staging area的ADDED中不包含file
@@ -137,23 +140,23 @@ public class Repository {
             // 1. 和上一个Commit时比没有任何变化
             // 2. file修改后add了，又修改返回了上一个Commit中的样子
             // 3. rm file后，又添加了一个一模一样的回来
-            stage.setBackToUnchanged(filename, fileHashID);
+            stage.changeState(filename, fileHashID, Stage.STATE.UNCHANGED);
             // 不用删掉object中的之前add的Blob
             // git中用prune去除dangling object
         }
 
-        writeStage();
+        saveStage();
     }
 
     public static void commit(String m) {
-        getStage();
-
-        if (!stage.hasStaged()) {
-            message("No changes added to the commit.");
-            System.exit(0);
-        }
         if (m.isEmpty()) {
             message("Please enter a commit message.");
+            System.exit(0);
+        }
+
+        loadStage();
+        if (!stage.hasStaged()) {
+            message("No changes added to the commit.");
             System.exit(0);
         }
 
@@ -162,7 +165,26 @@ public class Repository {
         c.save();
         writeHead(c.getHashID());
 
-        writeStage();
+        saveStage();
     }
 
+    public static void remove(String filename) {
+        File f = join(CWD, filename);
+        if (!f.exists()) {
+            System.exit(0);
+        }
+
+        loadStage();
+        String fileHashID = Blob.getHashID(f);
+        if (stage.containsAdded(fileHashID)) {
+            stage.changeState(filename, fileHashID, Stage.STATE.UNCHANGED);
+        } else if (getHeadCommit().containsTracked(fileHashID)) {
+            stage.changeState(filename, fileHashID, Stage.STATE.REMOVED);
+            restrictedDelete(f);
+        } else {
+            message("No reason to remove the file.");
+            System.exit(0);
+        }
+        saveStage();
+    }
 }

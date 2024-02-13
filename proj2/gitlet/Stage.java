@@ -12,6 +12,10 @@ public class Stage implements Dumpable {
     private Map<String, String> added = new HashMap<>();
     private Map<String, String> removed = new HashMap<>();
 
+    public enum STATE {
+        UNCHANGED, ADDED, REMOVED
+    }
+
     @Override
     public void dump() {
         System.out.println(unchanged);
@@ -54,16 +58,26 @@ public class Stage implements Dumpable {
         added.put(filename, fileHashID);
     }
 
-    /**
-     * Commit时的特殊情况
-     * 如果added或removed中存在filename的记录，则删除掉
-     * 另外在unchanged中记录filename到fileHashID的映射
-     * @param filename
-     * @param fileHashID
-      */
-    public void setBackToUnchanged(String filename, String fileHashID) {
-        added.remove(filename);
-        removed.remove(filename);
-        unchanged.put(filename, fileHashID);
+    public void changeState(String filename, String fileHashID, STATE state) {
+        switch (state) {
+
+        // Commit时的特殊情况、rm的情况1
+        case UNCHANGED:
+            added.remove(filename);
+            removed.remove(filename);
+            unchanged.put(filename, fileHashID);
+            break;
+        case ADDED:
+            removed.remove(filename);
+            unchanged.remove(filename);
+            added.put(filename, fileHashID);
+            break;
+        // rm的情况2
+        case REMOVED:
+            added.remove(filename);
+            unchanged.remove(filename);
+            removed.put(filename, fileHashID);
+            break;
+        }
     }
 }

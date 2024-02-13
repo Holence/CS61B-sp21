@@ -40,6 +40,11 @@ public class Main {
             checkOperands(args, 2);
             Repository.commit(args[1]);
             break;
+        case "rm":
+            Repository.checkInitialized();
+            checkOperands(args, 2);
+            Repository.remove(args[1]);
+            break;
         default:
             message("No command with that name exists.");
         }
