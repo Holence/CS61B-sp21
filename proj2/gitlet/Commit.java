@@ -1,7 +1,9 @@
 package gitlet;
 
+import static gitlet.Repository.COMMIT_DIR;
 import static gitlet.Utils.*;
 
+import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -31,7 +33,22 @@ public class Commit implements Dumpable {
     private String parent2 = "";
     private SortedMap<String, String> tracked;
 
-    Commit(String m, Date d, String parent1, SortedMap<String, String> tracked) {
+    /////////////////////////////////////////////
+    // Commit和Blob的路径方式一模一样，应该都继承自Obj
+    // 但subclass没法修改superclass的static类型
+    // 没法指定ROOT_DIR啊？？？
+    public static File getPath(String hashID) {
+        // 要用前2位作文件夹，后38位作文件名
+        // 但要写global-lob，要获取所有的Commit，遍历文件夹太麻烦了，懒得弄了
+        return join(COMMIT_DIR, hashID);
+    }
+
+    public static List<String> getAllObjHashID() {
+        return plainFilenamesIn(COMMIT_DIR);
+    }
+    /////////////////////////////////////////////
+
+    public Commit(String m, Date d, String parent1, SortedMap<String, String> tracked) {
         message = m;
         timestamp = formatDate(d);
         this.parent1 = parent1;
@@ -69,24 +86,28 @@ public class Commit implements Dumpable {
     public static Commit load(String commitHashID) {
         try {
             if (commitHashID.length() == 40) {
-                return readObject(Obj.getPath(commitHashID), Commit.class);
+                return readObject(getPath(commitHashID), Commit.class);
             } else {
                 // 支持短链访问
-                List<String> allObjHashID = Obj.getAllObjHashID();
+                List<String> allObjHashID = getAllObjHashID();
                 for (String hashID : allObjHashID) {
                     if (commitHashID.equals(hashID.substring(0, commitHashID.length()))) {
-                        return readObject(Obj.getPath(hashID), Commit.class);
+                        return readObject(getPath(hashID), Commit.class);
                     }
                 }
+                message("No commit with that id exists.");
+                System.exit(0);
                 return null;
             }
         } catch (IllegalArgumentException e) {
+            message("No commit with that id exists.");
+            System.exit(0);
             return null;
         }
     }
 
     public void save() {
-        writeObject(Obj.getPath(getHashID()), this);
+        writeObject(getPath(getHashID()), this);
     }
 
     public SortedMap<String, String> getTracked() {

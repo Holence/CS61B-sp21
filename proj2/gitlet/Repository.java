@@ -28,7 +28,8 @@ public class Repository {
     public static final File CWD = new File(System.getProperty("user.dir"));
     /** The .gitlet directory. */
     public static final File GITLET_DIR = join(CWD, ".gitlet");
-    public static final File OBJECTS_DIR = join(GITLET_DIR, "objects");
+    public static final File BLOB_DIR = join(GITLET_DIR, "blob");
+    public static final File COMMIT_DIR = join(GITLET_DIR, "commit");
     public static final File BRANCH_DIR = join(GITLET_DIR, "refs/heads");
     public static final File HEAD_FILE = join(GITLET_DIR, "HEAD");
     public static final File STAGE_FILE = join(GITLET_DIR, "stage");
@@ -132,7 +133,8 @@ public class Repository {
 
         // 建立.gitlet文件树;
         GITLET_DIR.mkdirs();
-        OBJECTS_DIR.mkdirs();
+        BLOB_DIR.mkdirs();
+        COMMIT_DIR.mkdirs();
         BRANCH_DIR.mkdirs();
         writeBranch("master");
 
@@ -237,18 +239,18 @@ public class Repository {
     }
 
     public static void globalLog() {
-        List<String> fileList = plainFilenamesIn(OBJECTS_DIR);
-        for (String filename : fileList) {
-            message(Commit.load(filename).getLog());
+        List<String> allObjHashID = Commit.getAllObjHashID();
+        for (String commitHashID : allObjHashID) {
+            message(Commit.load(commitHashID).getLog());
         }
     }
 
     public static void find(String s) {
-        List<String> fileList = plainFilenamesIn(OBJECTS_DIR);
+        List<String> allObjHashID = Commit.getAllObjHashID();
         Commit c;
         boolean found = false;
-        for (String filename : fileList) {
-            c = Commit.load(filename);
+        for (String commitHashID : allObjHashID) {
+            c = Commit.load(commitHashID);
             if (c.getMessage().contains(s)) {
                 message(c.getHashID());
                 found = true;
@@ -315,10 +317,7 @@ public class Repository {
 
     public static void checkoutFileInCommit(String commitHashID, String filename) {
         Commit c = Commit.load(commitHashID);
-        if (c == null) {
-            message("No commit with that id exists.");
-            System.exit(0);
-        }
+
         String fileHashID = c.getTracked().get(filename);
         if (fileHashID == null) {
             message("File does not exist in that commit.");
@@ -337,10 +336,6 @@ public class Repository {
         }
 
         Commit c = Commit.load(commitHashID);
-        if (c == null) {
-            message("No commit with that id exists.");
-            System.exit(0);
-        }
 
         // 清空
         for (String filename : plainFilenamesIn(CWD)) {

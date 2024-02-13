@@ -6,11 +6,12 @@
 
 ```
 .gitlet/
-  objects/ # Blob or Commit
-    a1/
-      b2xxxx # hashID of Commit (Commit的Serialization)
+  blob/
     c3/
       b4xxxx # hashID of file (任何staged或comitted的文件，只增不删)
+  commit/
+    a1/
+      b2xxxx # hashID of Commit (Commit的Serialization)
   refs/
     heads/ # Branch
       master (master's tip commit的hashID)
