@@ -60,6 +60,16 @@ public class Main {
             checkOperands(args, 2);
             Repository.find(args[1]);
             break;
+        case "status":
+            Repository.checkInitialized();
+            checkOperands(args, 1);
+            Repository.status();
+            break;
+        case "branch":
+            Repository.checkInitialized();
+            checkOperands(args, 2);
+            Repository.branch(args[1]);
+            break;
         default:
             message("No command with that name exists.");
         }

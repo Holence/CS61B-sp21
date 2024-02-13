@@ -64,7 +64,7 @@
       if (!HEAD_Commit.contain(fileHashID)){
           // 最新的Commit中不包含file
           if (!stage.containAdd(fileHashID)){
-              // staging area的ADDED中不包含file
+              // stage的added中写入（如果在unchanged或是removed中，则要去除）
               复制file到objects;
               stage.add(file);
           }
@@ -112,13 +112,18 @@
   void remove(String filename){
       fileHashID = hashFile(filename);
       if (stage.containAdd(fileHashID)){
+          // stage中为added
+          // rm表示unstage
           stage.changeState(file, "UNCHANGED");
       }
-      else if (HEAD_Commit.contain(fileHashID)){
+      else if (stage.containUnchanged(fileHashID)){
+          // stage中为unchanged（保持HeadCommit中的样子）
+          // rm表示删除
           stage.changeState(file, "REMOVED");
           如果文件在的话，删除文件;
       }
       else{
+          // modified (but haven't added) or Untracked
           "No reason to remove the file.";
       }
   }
@@ -190,11 +195,10 @@
       stage中不为REMOVED的文件名 且 hashID不一样了;
   
       "=== Untracked Files ===";
-      不在stage中 且 exist;
-      stage.getRemoved() 且 现在exist了;
+      exist但在stage中不是added或unchanged(可能是removed，也可能根本就没在stage中记载过);
   }
   ```
-
+  
 - `gitlet checkout -- [filename]`
 
   ```java

@@ -4,8 +4,8 @@ import static gitlet.Utils.*;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 /** Represents a gitlet commit object.
  *  It's a good idea to give a description here of what else this Class
@@ -28,9 +28,9 @@ public class Commit implements Dumpable {
     private String timestamp;
     private String parent1 = "";
     private String parent2 = "";
-    private Map<String, String> tracked;
+    private SortedMap<String, String> tracked;
 
-    Commit(String m, Date d, String parent1, Map<String, String> tracked) {
+    Commit(String m, Date d, String parent1, SortedMap<String, String> tracked) {
         message = m;
         timestamp = formatDate(d);
         this.parent1 = parent1;
@@ -40,7 +40,7 @@ public class Commit implements Dumpable {
 
     public static Commit initCommit() {
         // 最初的commit的两个parent都是空字符串
-        return new Commit("initial commit", new Date(0), "", new HashMap<>());
+        return new Commit("initial commit", new Date(0), "", new TreeMap<>());
     }
 
     @Override
@@ -54,7 +54,7 @@ public class Commit implements Dumpable {
     }
 
     private String formatDate(Date d) {
-        return new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z").format(d);
+        return new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z").format(d);
     }
 
     private void generateHashID() {
@@ -71,6 +71,10 @@ public class Commit implements Dumpable {
 
     public void save() {
         Obj.writeObj(serialize(this), hashID);
+    }
+
+    public SortedMap<String, String> getTracked() {
+        return tracked;
     }
 
     /**
@@ -97,7 +101,8 @@ public class Commit implements Dumpable {
                 commit %s
                 Date: %s
                 %s
-                """, hashID, timestamp, message);
+                %s
+                """, hashID, timestamp, message, tracked.toString());
     }
 
     public String getMessage() {

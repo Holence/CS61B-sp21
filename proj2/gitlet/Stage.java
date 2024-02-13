@@ -3,14 +3,14 @@ package gitlet;
 import static gitlet.Repository.STAGE_FILE;
 import static gitlet.Utils.*;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 public class Stage implements Dumpable {
     // 从filename到hashID的映射
-    private Map<String, String> unchanged = new HashMap<>();
-    private Map<String, String> added = new HashMap<>();
-    private Map<String, String> removed = new HashMap<>();
+    private SortedMap<String, String> unchanged = new TreeMap<>();
+    private SortedMap<String, String> added = new TreeMap<>();
+    private SortedMap<String, String> removed = new TreeMap<>();
 
     public enum STATE {
         UNCHANGED, ADDED, REMOVED
@@ -23,23 +23,28 @@ public class Stage implements Dumpable {
         System.out.println(removed);
     }
 
+    public SortedMap<String, String> getUnchanged() {
+        return unchanged;
+    }
+
+    public boolean containsUnchanged(String fileHashID) {
+        return unchanged.values().contains(fileHashID);
+    }
+
+    public SortedMap<String, String> getAdded() {
+        return added;
+    }
+
+    public boolean containsAdded(String fileHashID) {
+        return added.values().contains(fileHashID);
+    }
+
+    public SortedMap<String, String> getRemoved() {
+        return removed;
+    }
+
     public boolean hasStaged() {
         return added.size() > 0 || removed.size() > 0;
-    }
-
-    /**
-     * Commit时，把stage中removed清空，把added移入unchanged;
-    */
-    public void performCommit() {
-        removed = new HashMap<>();
-        for (String key : added.keySet()) {
-            unchanged.put(key, added.get(key));
-        }
-        added = new HashMap<>();
-    }
-
-    public Map<String, String> getUnchanged() {
-        return unchanged;
     }
 
     public static Stage load() {
@@ -50,12 +55,15 @@ public class Stage implements Dumpable {
         writeObject(STAGE_FILE, this);
     }
 
-    public boolean containsAdded(String fileHashID) {
-        return added.values().contains(fileHashID);
-    }
-
-    public void addAdded(String filename, String fileHashID) {
-        added.put(filename, fileHashID);
+    /**
+     * Commit时，把stage中removed清空，把added移入unchanged;
+    */
+    public void performCommit() {
+        removed = new TreeMap<>();
+        for (String key : added.keySet()) {
+            unchanged.put(key, added.get(key));
+        }
+        added = new TreeMap<>();
     }
 
     public void changeState(String filename, String fileHashID, STATE state) {
