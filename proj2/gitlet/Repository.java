@@ -338,7 +338,7 @@ public class Repository {
     }
 
     private static void checkoutCommit(String commitHashID) {
-        // gitlet没有detached HEAD state，所以这个不能让外界调用
+        // gitlet没有detached HEAD state，所以这个不能让外界调用，但是checkout branch和reset要用
         loadStage();
         if (!stage.getUntracked().isEmpty()) {
             message("There is an untracked file in the way; delete it, or add and commit it first.");
@@ -377,5 +377,29 @@ public class Repository {
 
     public static void branch(String branchname) {
         createBranch(branchname);
+    }
+
+    public static void removeBranch(String branchname) {
+        if (!isBranchExist(branchname)) {
+            message("A branch with that name does not exist.");
+            System.exit(0);
+        }
+        if (getBranch().equals(branchname)) {
+            message("Cannot remove the current branch.");
+            System.exit(0);
+        }
+        File f = join(BRANCH_DIR, branchname);
+        f.delete();
+        // 不用管branch中的commit
+        // git中会在一定的expire时间后自动prune dangling commit
+    }
+
+    // 和 git reset --hard [commitID] 一样
+    // 可以跨branch随意reset，只用把branch的指针设为commitID就行了
+    public static void reset(String commitHashID) {
+        checkoutCommit(commitHashID);
+        writeHead(commitHashID);
+        // 不用管branch中的commit
+        // git中会在一定的expire时间后自动prune dangling commit
     }
 }

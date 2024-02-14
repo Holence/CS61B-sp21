@@ -98,6 +98,16 @@ public class Main {
             checkOperands(args, 2);
             Repository.branch(args[1]);
             break;
+        case "rm-branch":
+            Repository.checkInitialized();
+            checkOperands(args, 2);
+            Repository.removeBranch(args[1]);
+            break;
+        case "reset":
+            Repository.checkInitialized();
+            checkOperands(args, 2);
+            Repository.reset(args[1]);
+            break;
         default:
             message("No command with that name exists.");
         }
