@@ -239,14 +239,14 @@ public class Repository {
     }
 
     public static void globalLog() {
-        List<String> allObjHashID = Commit.getAllObjHashID();
+        List<String> allObjHashID = Commit.getAllObjHashID(COMMIT_DIR);
         for (String commitHashID : allObjHashID) {
             message(Commit.load(commitHashID).getLog());
         }
     }
 
     public static void find(String s) {
-        List<String> allObjHashID = Commit.getAllObjHashID();
+        List<String> allObjHashID = Commit.getAllObjHashID(COMMIT_DIR);
         Commit c;
         boolean found = false;
         for (String commitHashID : allObjHashID) {
