@@ -283,6 +283,10 @@ public class Repository {
         }
     }
 
+    public static void show(String commitHashID) {
+        message(Commit.load(commitHashID).getFullLog());
+    }
+
     public static void globalLog() {
         List<String> allObjHashID = Commit.getAllObjHashID(COMMIT_DIR);
         for (String commitHashID : allObjHashID) {
@@ -519,10 +523,6 @@ public class Repository {
         Commit currentCommit = getHeadCommit();
         Commit branchCommit = Commit.load(getBranchTip(branchname));
         Commit splitPoint = splitPoint(currentCommit, branchCommit);
-
-        System.out.println(currentCommit.getLog());
-        System.out.println(branchCommit.getLog());
-        System.out.println(splitPoint.getLog());
 
         if (splitPoint.getHashID().equals(branchCommit.getHashID())) {
             // ①

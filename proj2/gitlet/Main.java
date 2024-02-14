@@ -56,6 +56,11 @@ public class Main {
             checkOperands(args, 1);
             Repository.log();
             break;
+        case "show":
+            Repository.checkInitialized();
+            checkOperands(args, 2);
+            Repository.show(args[1]);
+            break;
         case "global-log":
             Repository.checkInitialized();
             checkOperands(args, 1);

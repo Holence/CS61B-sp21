@@ -185,6 +185,31 @@ public class Commit extends Obj implements Dumpable {
         }
     }
 
+    /**
+     * 比getLog多出了tracked file的信息
+     * @return
+     */
+    public String getFullLog() {
+        if (hasParent2Commit()) {
+            return String.format("""
+                    ===
+                    commit %s
+                    Merge: %s %s
+                    Date: %s
+                    %s
+                    %s
+                    """, hashID, parent1.substring(0, 7), parent2.substring(0, 7), timestamp, message, tracked);
+        } else {
+            return String.format("""
+                    ===
+                    commit %s
+                    Date: %s
+                    %s
+                    """, hashID, timestamp, message, tracked);
+        }
+
+    }
+
     public String getMessage() {
         return message;
     }
