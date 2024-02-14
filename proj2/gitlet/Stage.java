@@ -4,6 +4,8 @@ import static gitlet.Repository.CWD;
 import static gitlet.Repository.STAGE_FILE;
 import static gitlet.Utils.*;
 
+import java.io.File;
+import java.util.Arrays;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.SortedSet;
@@ -117,6 +119,25 @@ public class Stage implements Dumpable {
         return sortedSet;
     }
 
+    public static List<String> getIgnoredFiles() {
+        // ignore files
+        File gitletignore = join(CWD, ".gitletignore");
+        List<String> ignoredFiles = null;
+        if (gitletignore.exists()) {
+            ignoredFiles = Arrays.asList(readContentsAsString(gitletignore).split("\\r?\\n"));
+        }
+        return ignoredFiles;
+    }
+
+    public static List<String> getNotIgnoredFiles() {
+        List<String> ignoredFiles = getIgnoredFiles();
+        List<String> cwdFileList = plainFilenamesIn(CWD);
+        if (ignoredFiles != null) {
+            cwdFileList = cwdFileList.stream().filter(s -> !ignoredFiles.contains(s)).toList();
+        }
+        return cwdFileList;
+    }
+
     /**
      * Untracked
      * exist但在stage中不是added或unchanged
@@ -124,7 +145,8 @@ public class Stage implements Dumpable {
      * @return
      */
     public SortedSet<String> getUntracked() {
-        List<String> cwdFileList = plainFilenamesIn(CWD);
+        List<String> cwdFileList = getNotIgnoredFiles();
+
         SortedSet<String> sortedSet = new TreeSet<>();
         for (String filename : cwdFileList) {
             if (unchanged.containsKey(filename) || added.containsKey(filename)) {

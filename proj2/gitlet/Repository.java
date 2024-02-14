@@ -101,6 +101,10 @@ public class Repository {
         writeContents(join(BRANCH_DIR, getBranch()), commitHashID);
     }
 
+    /**
+     * 当前branch's tip的commit
+     * @return
+     */
     private static Commit getHeadCommit() {
         return Commit.load(getHead());
     }
@@ -240,7 +244,7 @@ public class Repository {
         while (true) {
             message(c.getLog());
             if (c.hasParentCommit()) {
-                c = c.getParentCommit();
+                c = c.getParent1Commit();
             } else {
                 break;
             }
@@ -337,7 +341,7 @@ public class Repository {
         writeContents(f, Blob.readBlob(fileHashID));
     }
 
-    private static void checkoutCommit(String commitHashID) {
+    private static Commit checkoutCommit(String commitHashID) {
         // gitlet没有detached HEAD state，所以这个不能让外界调用，但是checkout branch和reset要用
         loadStage();
         if (!stage.getUntracked().isEmpty()) {
@@ -348,7 +352,7 @@ public class Repository {
         Commit c = Commit.load(commitHashID);
 
         // 清空
-        for (String filename : plainFilenamesIn(CWD)) {
+        for (String filename : Stage.getNotIgnoredFiles()) {
             restrictedDelete(join(CWD, filename));
         }
 
@@ -360,6 +364,7 @@ public class Repository {
 
         stage = new Stage(tracked);
         saveStage();
+        return c;
     }
 
     public static void checkoutBranch(String branchname) {

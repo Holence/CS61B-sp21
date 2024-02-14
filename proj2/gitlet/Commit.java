@@ -69,7 +69,7 @@ public class Commit extends Obj implements Dumpable {
 
     public static Commit load(String commitHashID) {
         try {
-            if (commitHashID.length() == 40) {
+            if (commitHashID.length() == UID_LENGTH) {
                 return readObject(getPath(COMMIT_DIR, commitHashID), Commit.class);
             } else {
                 // 支持短链访问
