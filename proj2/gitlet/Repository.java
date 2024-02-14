@@ -1,8 +1,15 @@
 package gitlet;
 
 import java.io.File;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -204,6 +211,31 @@ public class Repository {
         saveStage();
     }
 
+    /**
+     * merge时的commit
+     * @param m
+     * @param parent2
+     */
+    private static void commit(String m, Commit parent2) {
+        if (m.isEmpty()) {
+            message("Please enter a commit message.");
+            System.exit(0);
+        }
+
+        loadStage();
+        if (!stage.hasStaged()) {
+            message("No changes added to the commit.");
+            System.exit(0);
+        }
+
+        stage.performCommit();
+        Commit c = new Commit(m, new Date(), getHead(), parent2.getHashID(), stage.getUnchanged());
+        c.save();
+        writeHead(c.getHashID());
+
+        saveStage();
+    }
+
     public static void remove(String filename) {
         File f = join(CWD, filename);
         if (!f.exists()) {
@@ -219,7 +251,7 @@ public class Repository {
             // unstage的情况要考虑是否tracked
             if (getHeadCommit().containsTracked(filename)) {
                 // 如果是tracked则恢复至unchanged
-                String oldHashID = getHeadCommit().getTracked().get(filename);
+                String oldHashID = getHeadCommit().getFileHashID(filename);
                 stage.changeState(filename, oldHashID, Stage.STATE.UNCHANGED);
             } else {
                 //否则恢复至untracked
@@ -331,14 +363,13 @@ public class Repository {
     public static void checkoutFileInCommit(String commitHashID, String filename) {
         Commit c = Commit.load(commitHashID);
 
-        String fileHashID = c.getTracked().get(filename);
-        if (fileHashID == null) {
+        if (!c.containsTracked(filename)) {
             message("File does not exist in that commit.");
             System.exit(0);
         }
         File f = join(CWD, filename);
         restrictedDelete(f);
-        writeContents(f, Blob.readBlob(fileHashID));
+        writeContents(f, c.getFileContent(filename));
     }
 
     private static Commit checkoutCommit(String commitHashID) {
@@ -359,7 +390,7 @@ public class Repository {
         // 写入
         SortedMap<String, String> tracked = c.getTracked();
         for (String filename : tracked.keySet()) {
-            writeContents(join(CWD, filename), Blob.readBlob(tracked.get(filename)));
+            writeContents(join(CWD, filename), c.getFileContent(filename));
         }
 
         stage = new Stage(tracked);
@@ -402,9 +433,279 @@ public class Repository {
     // 和 git reset --hard [commitID] 一样
     // 可以跨branch随意reset，只用把branch的指针设为commitID就行了
     public static void reset(String commitHashID) {
-        checkoutCommit(commitHashID);
-        writeHead(commitHashID);
+        Commit c = checkoutCommit(commitHashID);
+        // 防止传进来的commitHashID是短链，这里用返回的Commit获得HashID
+        writeHead(c.getHashID());
         // 不用管branch中的commit
         // git中会在一定的expire时间后自动prune dangling commit
     }
+
+    private static Map<String, Integer> BFS(Commit start) {
+        Map<String, Integer> hashIDtoDepth = new HashMap<>();
+        Deque<Commit> neighbors = new ArrayDeque<>();
+
+        neighbors.add(start);
+        int depth = 0;
+        Commit commit;
+        while (!neighbors.isEmpty()) {
+            for (int i = 0; i < neighbors.size(); i++) {
+                commit = neighbors.removeFirst();
+                if (!hashIDtoDepth.containsKey(commit.getHashID())) {
+                    hashIDtoDepth.put(commit.getHashID(), depth);
+                    if (commit.hasParent1Commit()) {
+                        neighbors.addLast(commit.getParent1Commit());
+                    }
+                    if (commit.hasParent2Commit()) {
+                        neighbors.addLast(commit.getParent2Commit());
+                    }
+                }
+            }
+            depth++;
+        }
+
+        return hashIDtoDepth;
+    }
+
+    /**
+     * 关于splitPoint，有向无环图的最近交点。
+     * 思路是从两者往根回溯，在对方路径上且深度最浅的节点就是splitPoint。
+     * （若二者之一属于对方的树，那么就是不需要任何操作的前两种情况）
+     * 
+     * 考虑用BFS的深度，即回溯树的深度，splitPoint是两棵树“相交且深度同时最小”的节点。
+     * 若二者之一属于对方的树，那么没有split。
+     * （两次BFS，把commitID和深度的映射分别记录在两个`Map<String, int>`中）
+     * @param currentCommit
+     * @param branchCommit
+     * @return
+     */
+    private static Commit splitPoint(Commit currentCommit, Commit branchCommit) {
+        Map<String, Integer> currentCommitMap = BFS(currentCommit);
+        Map<String, Integer> branchCommitMap = BFS(branchCommit);
+
+        Commit splitPoint = null;
+        if (branchCommitMap.containsKey(currentCommit.getHashID())) {
+            splitPoint = currentCommit;
+        } else if (currentCommitMap.containsKey(branchCommit.getHashID())) {
+            splitPoint = branchCommit;
+        } else {
+            // “相交且深度同时最小”：取其中一棵树按照深度从小到大遍历，第一个属于另一棵树的节点，就是splitPoint
+            List<Map.Entry<String, Integer>> list = new ArrayList<>(currentCommitMap.entrySet());
+            list.sort(Map.Entry.comparingByValue());
+            for (Map.Entry<String, Integer> entry : list) {
+                if (branchCommitMap.containsKey(entry.getKey())) {
+                    splitPoint = Commit.load(entry.getKey());
+                    break;
+                }
+            }
+        }
+        return splitPoint;
+    }
+
+    public static void merge(String branchname) {
+        loadStage();
+        if (stage.hasStaged()) {
+            message("You have uncommitted changes.");
+            System.exit(0);
+        }
+        if (!isBranchExist(branchname)) {
+            message("A branch with that name does not exist.");
+            System.exit(0);
+        }
+        if (getBranch().equals(branchname)) {
+            message("Cannot merge a branch with itself.");
+            System.exit(0);
+        }
+        // merge("There is an untracked file in the way; delete it, or add and commit it first.");
+        Commit currentCommit = getHeadCommit();
+        Commit branchCommit = Commit.load(getBranchTip(branchname));
+        Commit splitPoint = splitPoint(currentCommit, branchCommit);
+
+        System.out.println(currentCommit.getLog());
+        System.out.println(branchCommit.getLog());
+        System.out.println(splitPoint.getLog());
+
+        if (splitPoint.getHashID().equals(branchCommit.getHashID())) {
+            // ①
+            // root - branch - commit - commit - *current
+            // root - branch - commit - commit - *current
+            message("Given branch is an ancestor of the current branch.");
+            System.exit(0);
+        } else if (splitPoint.getHashID().equals(currentCommit.getHashID())) {
+            // ② fast-forward
+            // root - *current - commit - commit - branch
+            // root - commit - commit - commit - branch/*current
+            reset(branchCommit.getHashID());
+            message("Current branch fast-forwarded.");
+            System.exit(0);
+        } else {
+            // ③
+            Set<String> allfiles = new HashSet<>();
+            allfiles.addAll(currentCommit.getTracked().keySet());
+            allfiles.addAll(branchCommit.getTracked().keySet());
+            allfiles.addAll(splitPoint.getTracked().keySet());
+
+            // 检查是否有Untracked或Modifications Not Staged会在merge中被修改
+            // 必须提前检查，不然在mergeOptions会执行删除文件、修改stage等无法撤销的命令
+            SortedSet<String> checkFileList = stage.getUntracked();
+            checkFileList.addAll(stage.getModified());
+            for (String filename : checkFileList) {
+                if (mergeWillOverwriteFile(filename, currentCommit, branchCommit, splitPoint)) {
+                    message("There is an untracked file in the way; delete it, or add and commit it first.");
+                    System.exit(0);
+                }
+            }
+
+            // 对号入座执行命令
+            boolean conflicted = false;
+            for (String filename : allfiles) {
+                conflicted = mergeOptions(filename, currentCommit, branchCommit, splitPoint);
+            }
+
+            commit(String.format("Merged %s into %s.", branchname, getBranch()), branchCommit);
+            if (conflicted) {
+                message("Encountered a merge conflict.");
+            }
+
+        }
+    }
+
+    /**
+     * 和mergeOptions的逻辑一模一样，但不进行任何操作，只是用来检查
+     * @param filename
+     * @param currentCommit
+     * @param branchCommit
+     * @param splitPoint
+     * @return
+     */
+    private static boolean mergeWillOverwriteFile(String filename, Commit currentCommit, Commit branchCommit, Commit splitPoint) {
+        if (splitPoint.containsTracked(filename)) {
+            if (branchCommit.containsTracked(filename) && currentCommit.containsTracked(filename)) {
+                // 1 4
+                if (!commitFileHashIDSame(filename, branchCommit, splitPoint)) {
+                    if (commitFileHashIDSame(filename, currentCommit, splitPoint)) {
+                        // 1
+                        return true;
+                    } else {
+                        if (!commitFileHashIDSame(filename, branchCommit, currentCommit)) {
+                            // 4
+                            return true;
+                        }
+                    }
+                }
+            } else if (branchCommit.containsTracked(filename)) {
+                if (!commitFileHashIDSame(filename, branchCommit, splitPoint)) {
+                    // 7
+                    return true;
+                }
+            } else if (currentCommit.containsTracked(filename)) {
+                // 3 6
+                if (commitFileHashIDSame(filename, currentCommit, splitPoint)) {
+                    // 3
+                    return true;
+                } else {
+                    return true;
+                }
+            }
+        } else {
+            if (branchCommit.containsTracked(filename)) {
+                if (!currentCommit.containsTracked(filename)) {
+                    // 2
+                    return true;
+                } else {
+                    // 5
+                    if (!commitFileHashIDSame(filename, branchCommit, currentCommit)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean commitFileHashIDSame(String filename, Commit c1, Commit c2) {
+        return c1.getFileHashID(filename).equals(c2.getFileHashID(filename));
+    }
+
+    /**
+     * 7中情况的逻辑分支，详见getlet-design.md中的表格
+     * @param filename
+     * @param currentCommit
+     * @param branchCommit
+     * @param splitPoint
+     * @return 是否有conflict
+     */
+    private static boolean mergeOptions(String filename, Commit currentCommit, Commit branchCommit, Commit splitPoint) {
+        if (splitPoint.containsTracked(filename)) {
+            if (branchCommit.containsTracked(filename) && currentCommit.containsTracked(filename)) {
+                // 1 4
+                if (!commitFileHashIDSame(filename, branchCommit, splitPoint)) {
+                    if (commitFileHashIDSame(filename, currentCommit, splitPoint)) {
+                        // 1
+                        mergeWithCheckoutBranch(branchCommit, filename);
+                        return false;
+                    } else {
+                        if (!commitFileHashIDSame(filename, branchCommit, currentCommit)) {
+                            // 4
+                            mergeWithConflict(filename, currentCommit, branchCommit);
+                            return true;
+                        }
+                    }
+                }
+            } else if (branchCommit.containsTracked(filename)) {
+                if (!commitFileHashIDSame(filename, branchCommit, splitPoint)) {
+                    // 7
+                    mergeWithConflict(filename, currentCommit, branchCommit);
+                    return true;
+                }
+            } else if (currentCommit.containsTracked(filename)) {
+                // 3 6
+                if (commitFileHashIDSame(filename, currentCommit, splitPoint)) {
+                    // 3
+                    remove(filename);
+                    return false;
+                } else {
+                    mergeWithConflict(filename, currentCommit, branchCommit);
+                    return true;
+                }
+            }
+        } else {
+            if (branchCommit.containsTracked(filename)) {
+                if (!currentCommit.containsTracked(filename)) {
+                    // 2
+                    mergeWithCheckoutBranch(branchCommit, filename);
+                    return false;
+                } else {
+                    // 5
+                    if (!commitFileHashIDSame(filename, branchCommit, currentCommit)) {
+                        mergeWithConflict(filename, currentCommit, branchCommit);
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private static void mergeWithCheckoutBranch(Commit branch, String filename) {
+        checkoutFileInCommit(branch.getHashID(), filename);
+        add(filename);
+    }
+
+    private static void mergeWithConflict(String filename, Commit c1, Commit c2) {
+        String t1 = "";
+        if (c1.containsTracked(filename)) {
+            t1 = c1.getFileContentAsString(filename);
+        }
+        String t2 = "";
+        if (c2.containsTracked(filename)) {
+            t2 = c2.getFileContentAsString(filename);
+        }
+        String text = String.format("""
+                <<<<<<< HEAD
+                %s=======
+                %s>>>>>>>""", t1, t2);
+        writeContents(join(CWD, filename), text);
+        add(filename);
+    }
+
 }

@@ -108,6 +108,11 @@ public class Main {
             checkOperands(args, 2);
             Repository.reset(args[1]);
             break;
+        case "merge":
+            Repository.checkInitialized();
+            checkOperands(args, 2);
+            Repository.merge(args[1]);
+            break;
         default:
             message("No command with that name exists.");
         }

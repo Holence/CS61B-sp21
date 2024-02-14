@@ -13,6 +13,8 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 public class Stage implements Dumpable {
+    private static final long serialVersionUID = -6830305721978036177L;
+
     // 从filename到hashID的映射
     private SortedMap<String, String> unchanged;
     private SortedMap<String, String> added;

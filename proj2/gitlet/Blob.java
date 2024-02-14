@@ -1,9 +1,7 @@
 package gitlet;
 
 import static gitlet.Repository.BLOB_DIR;
-import static gitlet.Utils.readContents;
-import static gitlet.Utils.sha1;
-import static gitlet.Utils.writeContents;
+import static gitlet.Utils.*;
 
 import java.io.File;
 
@@ -25,7 +23,11 @@ public class Blob extends Obj {
         writeContents(getPath(BLOB_DIR, hashID), readContents(f));
     }
 
-    public static byte[] readBlob(String hashID) {
+    public static byte[] readContent(String hashID) {
         return readContents(getPath(BLOB_DIR, hashID));
+    }
+
+    public static String readContentAsString(String hashID) {
+        return readContentsAsString(getPath(BLOB_DIR, hashID));
     }
 }

@@ -16,6 +16,8 @@ import java.util.TreeMap;
  *  @author Holence
  */
 public class Commit extends Obj implements Dumpable {
+    private static final long serialVersionUID = -6830305721978036177L;
+
     /**
      * add instance variables here.
      *
@@ -36,6 +38,15 @@ public class Commit extends Obj implements Dumpable {
         message = m;
         timestamp = formatDate(d);
         this.parent1 = parent1;
+        this.tracked = tracked;
+        generateHashID();
+    }
+
+    public Commit(String m, Date d, String parent1, String parent2, SortedMap<String, String> tracked) {
+        message = m;
+        timestamp = formatDate(d);
+        this.parent1 = parent1;
+        this.parent2 = parent2;
         this.tracked = tracked;
         generateHashID();
     }
@@ -117,22 +128,61 @@ public class Commit extends Obj implements Dumpable {
         return tracked.containsKey(filename);
     }
 
+    public String getFileHashID(String filename) {
+        return tracked.get(filename);
+    }
+
+    public byte[] getFileContent(String filename) {
+        return Blob.readContent(getFileHashID(filename));
+    }
+
+    public String getFileContentAsString(String filename) {
+        return Blob.readContentAsString(getFileHashID(filename));
+    }
+
+    /**
+     * init commit的parent1和parent2都是空字符串
+     * 其他大部分commit中parent1非空
+     * 只有merge的commit的parent1和parent2都非空
+     * @return
+     */
     public boolean hasParentCommit() {
         return !parent1.isEmpty();
     }
 
-    public Commit getParentCommit() {
+    public boolean hasParent1Commit() {
+        return !parent1.isEmpty();
+    }
+
+    public boolean hasParent2Commit() {
+        return !parent2.isEmpty();
+    }
+
+    public Commit getParent1Commit() {
         return Commit.load(this.parent1);
     }
 
+    public Commit getParent2Commit() {
+        return Commit.load(this.parent2);
+    }
+
     public String getLog() {
-        // TODO: 如果是Merge: 4975af1 2c1ead1
-        return String.format("""
-                ===
-                commit %s
-                Date: %s
-                %s
-                """, hashID, timestamp, message);
+        if (hasParent2Commit()) {
+            return String.format("""
+                    ===
+                    commit %s
+                    Merge: %s %s
+                    Date: %s
+                    %s
+                    """, hashID, parent1.substring(0, 7), parent2.substring(0, 7), timestamp, message);
+        } else {
+            return String.format("""
+                    ===
+                    commit %s
+                    Date: %s
+                    %s
+                    """, hashID, timestamp, message);
+        }
     }
 
     public String getMessage() {

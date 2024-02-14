@@ -304,6 +304,7 @@
   // root - *current - commit - commit - branch
   // root - commit - commit - commit - branch/*current
   // 不需要附加commit
+  // reset(branch's tip commit)
   // "Current branch fast-forwarded."
   
   // ③ 
@@ -323,42 +324,48 @@
   // 然后commit("Merged [branchname] into [currentname].")
   // 如果有conflict，"Encountered a merge conflict."
   ```
-
+  
   ---
-
+  
   Current和Merged的一样，`continue`就行了
   
   > 如果全部文件都是这样，将导致commit中没有任何修改，会触发commit中的报错，gitlet要求是这样的。
   >
   > 然而git中允许没有任何修改的merge commit
-
+  
   Current和Merged不一样，才需要额外的Command
   
   merge时不允许staging area有东西！！！
-
+  
   merge时允许当前工作区有Untracked或Modifications Not Staged，仅当merge不会影响到这些文件时（也就是下表的Command为空的情况）。如果Command不为空，则一定会对这些文件overwrite或delete，则应该报错"There is an untracked file in the way; delete it, or add and commit it first."
   
   > 其实完全可以通过“在Command之前备份、Command之后复原”，来保留Untracked或Modifications Not Staged。
   >
   > 但既然git也是这个德性，那就算了吧……
   
-  | Split | Branch | Current | Merged       | Command                           |
-  | ----- | ------ | ------- | ------------ | --------------------------------- |
-  | A     | A      | A       | A            | -                                 |
-  | A     | A!     | A       | A!           | checkout [branch] -- A<br />add A |
-  | A     | A      | A!      | A!           | -                                 |
-  | -     | -      | A       | A            | -                                 |
-  | -     | A      | -       | A            | checkout [branch] -- A<br />add A |
-  | A     | X      | A       | X            | rm A                              |
-  | A     | A      | X       | X            | -                                 |
-  | A     | A!     | A!      | A!           | -                                 |
-  | A     | A!     | A?      | Conflict格式 | add A                             |
+  | Split | Branch | Current | Merged       | Command                           | ID   |
+  | ----- | ------ | ------- | ------------ | --------------------------------- | ---- |
+  | A     | A      | A       | A            | -                                 |      |
+  | A     | A!     | A       | A!           | checkout [branch] -- A<br />add A | 1    |
+  | A     | A      | A!      | A!           | -                                 |      |
+  | -     | -      | A       | A            | -                                 |      |
+  | -     | A      | -       | A            | checkout [branch] -- A<br />add A | 2    |
+  | A     | X      | A       | X            | rm A                              | 3    |
+  | A     | A      | X       | X            | -                                 |      |
+  | A     | X      | X       | X            | -                                 |      |
+  | A     | A!     | A!      | A!           | -                                 |      |
+  | A     | A!     | A?      | Conflict格式 | add A                             | 4    |
+  | -     | A!     | A?      | Conflict格式 | add A                             | 5    |
+  | A     | X      | A!      | Conflict格式 | add A                             | 6    |
+  | A     | A!     | X       | Conflict格式 | add A                             | 7    |
   
   ---
   
-  关于split point，有向无环图的最近交点。思路是从两者往根回溯，若能走到对方的节点，则没有split point，否则走到的最近的相同节点是split point。考虑用BFS的深度，即回溯树的深度，split point是两棵树“相交且深度同时最小”的节点。若二者之一属于对方的树，那么没有split。（两次BFS，把commitID和深度的映射分别记录在两个`Map<String, int>`中）
+  关于split point，有向无环图的最近交点。思路是从两者往根回溯，在对方路径上且深度最浅的节点就是split point（若二者之一属于对方的树，那么就是不需要任何操作的前两种情况）。
   
-  “相交且深度同时最小”：取其中一棵树，按照深度从小到大遍历，若节点属于另一棵树，且在另一棵树中的深度小于MIN，则记下来（如果在另一棵）
+  考虑用BFS的深度，即回溯树的深度，split point是两棵树“相交且深度同时最小”的节点。（两次BFS，把commitID和深度的映射分别记录在两个`Map<String, int>`中）
+  
+  “相交且深度同时最小”：取其中一棵树按照深度从小到大遍历，第一个属于另一棵树的节点，就是split point
   
   ```java
   //              C6
