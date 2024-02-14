@@ -57,6 +57,10 @@ public class Stage implements Dumpable {
         return s != null && s.equals(fileHashID);
     }
 
+    public void removeAdded(String filename) {
+        added.remove(filename);
+    }
+
     public SortedMap<String, String> getRemoved() {
         return removed;
     }

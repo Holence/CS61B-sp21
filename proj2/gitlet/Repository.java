@@ -211,8 +211,17 @@ public class Repository {
         if (stage.containsAdded(filename, fileHashID)) {
             // stage中为added
             // rm表示unstage
-            String oldHashID = getHeadCommit().getTracked().get(filename);
-            stage.changeState(filename, oldHashID, Stage.STATE.UNCHANGED);
+
+            // unstage的情况要考虑是否tracked
+            if (getHeadCommit().containsTracked(filename)) {
+                // 如果是tracked则恢复至unchanged
+                String oldHashID = getHeadCommit().getTracked().get(filename);
+                stage.changeState(filename, oldHashID, Stage.STATE.UNCHANGED);
+            } else {
+                //否则恢复至untracked
+                stage.removeAdded(filename);
+            }
+
         } else if (stage.containsUnchanged(filename, fileHashID)) {
             // stage中为unchanged（保持HeadCommit中的样子）
             // rm表示删除
@@ -329,6 +338,7 @@ public class Repository {
     }
 
     private static void checkoutCommit(String commitHashID) {
+        // gitlet没有detached HEAD state，所以这个不能让外界调用
         loadStage();
         if (!stage.getUntracked().isEmpty()) {
             message("There is an untracked file in the way; delete it, or add and commit it first.");
@@ -357,7 +367,7 @@ public class Repository {
             message("No such branch exists.");
             System.exit(0);
         }
-        if (getBranch() == branchname) {
+        if (getBranch().equals(branchname)) {
             message("No need to checkout the current branch.");
             System.exit(0);
         }

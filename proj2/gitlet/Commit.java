@@ -108,6 +108,15 @@ public class Commit extends Obj implements Dumpable {
         return s != null && s.equals(fileHashID);
     }
 
+    /**
+     * Commit的tracked中是否含有文件名为filename的
+     * @param filename
+     * @return
+     */
+    public boolean containsTracked(String filename) {
+        return tracked.containsKey(filename);
+    }
+
     public boolean hasParentCommit() {
         return !parent1.isEmpty();
     }
