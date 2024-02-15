@@ -59,6 +59,14 @@ public class Repository {
     }
 
     /**
+     * 从refs/heads/读取所有branch的名字
+     * @return
+     */
+    private static List<String> getBranches() {
+        return plainFilenamesIn(BRANCH_DIR);
+    }
+
+    /**
      * 在HEAD中写入branchname
      * @param branchName
      */
@@ -192,6 +200,9 @@ public class Repository {
     }
 
     public static void commit(String m) {
+        // gitlet commit ""
+        // 实际上这个错误不可能发生，因为在Main.java中就会在checkOperands时被判断为"Incorrect operands."
+        // 但gradescope上测试点test17-empty-commit-message-err.in并不会报错
         if (m.isEmpty()) {
             message("Please enter a commit message.");
             System.exit(0);
@@ -238,35 +249,37 @@ public class Repository {
 
     public static void remove(String filename) {
         File f = join(CWD, filename);
-        if (!f.exists()) {
-            System.exit(0);
-        }
+        String oldHashID = getHeadCommit().getFileHashID(filename);
 
         loadStage();
-        String fileHashID = Blob.getHashID(f);
-        if (stage.containsAdded(filename, fileHashID)) {
-            // stage中为added
-            // rm表示unstage
-
-            // unstage的情况要考虑是否tracked
-            if (getHeadCommit().containsTracked(filename)) {
-                // 如果是tracked则恢复至unchanged
-                String oldHashID = getHeadCommit().getFileHashID(filename);
-                stage.changeState(filename, oldHashID, Stage.STATE.UNCHANGED);
-            } else {
-                //否则恢复至untracked
-                stage.removeAdded(filename);
-            }
-
-        } else if (stage.containsUnchanged(filename, fileHashID)) {
-            // stage中为unchanged（保持HeadCommit中的样子）
-            // rm表示删除
-            stage.changeState(filename, fileHashID, Stage.STATE.REMOVED);
-            restrictedDelete(f);
+        if (!f.exists()) {
+            // 已经在gitlet不知情时(deleted)了
+            stage.changeState(filename, oldHashID, Stage.STATE.REMOVED);
         } else {
-            // modified (but haven't added) or Untracked
-            message("No reason to remove the file.");
-            System.exit(0);
+            String fileHashID = Blob.getHashID(f);
+            if (stage.containsAdded(filename, fileHashID)) {
+                // stage中为added
+                // rm表示unstage
+
+                // unstage的情况要考虑是否tracked
+                if (getHeadCommit().containsTracked(filename)) {
+                    // 如果是tracked则恢复至unchanged
+                    stage.changeState(filename, oldHashID, Stage.STATE.UNCHANGED);
+                } else {
+                    //否则恢复至untracked
+                    stage.removeAdded(filename);
+                }
+
+            } else if (stage.containsUnchanged(filename, fileHashID)) {
+                // stage中为unchanged（保持HeadCommit中的样子）
+                // rm表示删除
+                stage.changeState(filename, oldHashID, Stage.STATE.REMOVED);
+                restrictedDelete(f);
+            } else {
+                // modified (but haven't added) or Untracked
+                message("No reason to remove the file.");
+                System.exit(0);
+            }
         }
         saveStage();
     }
@@ -317,11 +330,11 @@ public class Repository {
 
         message("=== Branches ===");
         String currentBranch = getBranch();
-        for (String filename : plainFilenamesIn(BRANCH_DIR)) {
-            if (currentBranch.equals(filename)) {
-                message("*" + filename);
+        for (String branchname : getBranches()) {
+            if (currentBranch.equals(branchname)) {
+                message("*" + branchname);
             } else {
-                message(filename);
+                message(branchname);
             }
         }
 
@@ -416,6 +429,10 @@ public class Repository {
     }
 
     public static void branch(String branchname) {
+        if (getBranches().contains(branchname)) {
+            message("A branch with that name already exists.");
+            System.exit(0);
+        }
         createBranch(branchname);
     }
 
@@ -706,7 +723,8 @@ public class Repository {
         String text = String.format("""
                 <<<<<<< HEAD
                 %s=======
-                %s>>>>>>>""", t1, t2);
+                %s>>>>>>>
+                """, t1, t2);
         writeContents(join(CWD, filename), text);
         add(filename);
     }
