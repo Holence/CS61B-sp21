@@ -181,24 +181,25 @@ public class Stage implements Dumpable {
 
     public void changeState(String filename, String fileHashID, STATE state) {
         switch (state) {
-
-        // Commit时的特殊情况、rm的情况1
-        case UNCHANGED:
-            added.remove(filename);
-            removed.remove(filename);
-            unchanged.put(filename, fileHashID);
-            break;
-        case ADDED:
-            removed.remove(filename);
-            unchanged.remove(filename);
-            added.put(filename, fileHashID);
-            break;
-        // rm的情况2
-        case REMOVED:
-            added.remove(filename);
-            unchanged.remove(filename);
-            removed.put(filename, fileHashID);
-            break;
+            // Commit时的特殊情况、rm的情况1
+            case UNCHANGED:
+                added.remove(filename);
+                removed.remove(filename);
+                unchanged.put(filename, fileHashID);
+                break;
+            case ADDED:
+                removed.remove(filename);
+                unchanged.remove(filename);
+                added.put(filename, fileHashID);
+                break;
+            // rm的情况2
+            case REMOVED:
+                added.remove(filename);
+                unchanged.remove(filename);
+                removed.put(filename, fileHashID);
+                break;
+            default:
+                break;
         }
     }
 }
