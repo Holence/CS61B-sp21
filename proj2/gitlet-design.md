@@ -240,7 +240,8 @@
   private void checkoutCommit(String commitID){
       // gitlet没有detached HEAD state，所以这个不能让外界调用
       "No commit with that id exists.";
-      if (hasUntracked()){
+      // 允许当前工作区有Untracked或Modifications Not Staged，仅当checkoutCommit不会影响到这些文件时
+      if (){
           "There is an untracked file in the way; delete it, or add and commit it first.";        
       }
       清空目录;

@@ -392,12 +392,18 @@ public class Repository {
     private static Commit checkoutCommit(String commitHashID) {
         // gitlet没有detached HEAD state，所以这个不能让外界调用，但是checkout branch和reset要用
         loadStage();
-        if (!stage.getUntracked().isEmpty()) {
-            message("There is an untracked file in the way; delete it, or add and commit it first.");
-            System.exit(0);
-        }
-
         Commit c = Commit.load(commitHashID);
+
+        // 检查是否有Untracked或Modifications Not Staged会在checkoutCommit中被修改
+        // 必须提前检查，不然在checkoutCommit会执行删除文件、修改文件等无法撤销的命令
+        SortedSet<String> checkFileList = stage.getUntracked();
+        checkFileList.addAll(stage.getModified());
+        for (String filename : checkFileList) {
+            if (c.containsTracked(filename)) {
+                message("There is an untracked file in the way; delete it, or add and commit it first.");
+                System.exit(0);
+            }
+        }
 
         // 清空
         for (String filename : Stage.getNotIgnoredFiles()) {
@@ -537,7 +543,7 @@ public class Repository {
             message("Cannot merge a branch with itself.");
             System.exit(0);
         }
-        // merge("There is an untracked file in the way; delete it, or add and commit it first.");
+
         Commit currentCommit = getHeadCommit();
         Commit branchCommit = Commit.load(getBranchTip(branchname));
         Commit splitPoint = splitPoint(currentCommit, branchCommit);
