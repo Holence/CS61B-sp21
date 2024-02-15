@@ -5,6 +5,7 @@ import static gitlet.Repository.STAGE_FILE;
 import static gitlet.Utils.*;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.SortedMap;
@@ -133,9 +134,14 @@ public class Stage implements Dumpable {
 
     public static List<String> getNotIgnoredFiles() {
         List<String> ignoredFiles = getIgnoredFiles();
-        List<String> cwdFileList = plainFilenamesIn(CWD);
+        List<String> cwdFileList = new ArrayList<>(plainFilenamesIn(CWD));
+
         if (ignoredFiles != null) {
-            cwdFileList = cwdFileList.stream().filter(s -> !ignoredFiles.contains(s)).toList();
+            for (String filename : ignoredFiles) {
+                if (cwdFileList.contains(filename)) {
+                    cwdFileList.remove(filename);
+                }
+            }
         }
         return cwdFileList;
     }

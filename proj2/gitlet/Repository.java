@@ -454,6 +454,7 @@ public class Repository {
         while (!neighbors.isEmpty()) {
             for (int i = 0; i < neighbors.size(); i++) {
                 commit = neighbors.removeFirst();
+                // 得保证不会重复访问
                 if (!hashIDtoDepth.containsKey(commit.getHashID())) {
                     hashIDtoDepth.put(commit.getHashID(), depth);
                     if (commit.hasParent1Commit()) {
@@ -558,7 +559,9 @@ public class Repository {
             // 对号入座执行命令
             boolean conflicted = false;
             for (String filename : allfiles) {
-                conflicted = mergeOptions(filename, currentCommit, branchCommit, splitPoint);
+                if (mergeOptions(filename, currentCommit, branchCommit, splitPoint)) {
+                    conflicted = true;
+                }
             }
 
             commit(String.format("Merged %s into %s.", branchname, getBranch()), branchCommit);
