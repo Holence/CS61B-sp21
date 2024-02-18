@@ -26,7 +26,7 @@ public class Hallway extends Room {
         orientation = o;
         this.width = width;
         switch (orientation) {
-            case Orientation.UP:
+            case UP:
                 // wffw
                 // wffw
                 // wffw
@@ -36,7 +36,7 @@ public class Hallway extends Room {
                 east = p.x() + width + 1;
                 north = p.y() + (length - 1);
                 break;
-            case Orientation.DOWN:
+            case DOWN:
                 // .ffw
                 // wffw
                 // wffw
@@ -46,7 +46,7 @@ public class Hallway extends Room {
                 east = p.x() + width + 1;
                 south = p.y() - (length - 1);
                 break;
-            case Orientation.LEFT:
+            case LEFT:
                 // wwww
                 // ffff
                 // ffff
@@ -56,7 +56,7 @@ public class Hallway extends Room {
                 north = p.y() + width + 1;
                 west = p.x() - (length - 1);
                 break;
-            case Orientation.RIGHT:
+            case RIGHT:
                 // wwww
                 // ffff
                 // ffff
@@ -73,8 +73,8 @@ public class Hallway extends Room {
         int x, y;
         List<Position> wall = new ArrayList<>();
         switch (orientation) {
-            case Orientation.UP:
-            case Orientation.DOWN:
+            case UP:
+            case DOWN:
                 // Wall at LEFT
                 x = west;
                 for (y = south; y <= north; y++) {
@@ -86,8 +86,8 @@ public class Hallway extends Room {
                     wall.add(new Position(x, y));
                 }
                 break;
-            case Orientation.LEFT:
-            case Orientation.RIGHT:
+            case LEFT:
+            case RIGHT:
                 // Wall at UP
                 y = north;
                 for (x = west; x <= east; x++) {
@@ -114,8 +114,8 @@ public class Hallway extends Room {
     Exit getRandomExit(Random r) {
         Exit e = null;
         switch (orientation) {
-            case Orientation.UP:
-            case Orientation.DOWN:
+            case UP:
+            case DOWN:
 
                 switch (uniform(r, 2)) {
                     case 0:
@@ -128,8 +128,8 @@ public class Hallway extends Room {
                         break;
                 }
                 break;
-            case Orientation.LEFT:
-            case Orientation.RIGHT:
+            case LEFT:
+            case RIGHT:
                 switch (uniform(r, 2)) {
                     case 0:
                         // UP
@@ -158,13 +158,13 @@ public class Hallway extends Room {
      */
     public Exit getEndExit() {
         switch (orientation) {
-            case Orientation.UP:
+            case UP:
                 return new Exit(new Position(west, north), Orientation.UP, width);
-            case Orientation.DOWN:
+            case DOWN:
                 return new Exit(new Position(west, south), Orientation.DOWN, width);
-            case Orientation.LEFT:
+            case LEFT:
                 return new Exit(new Position(west, south), Orientation.LEFT, width);
-            case Orientation.RIGHT:
+            case RIGHT:
                 return new Exit(new Position(east, south), Orientation.RIGHT, width);
             default:
                 return null;

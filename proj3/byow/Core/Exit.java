@@ -12,7 +12,7 @@ import byow.TileEngine.Tileset;
  * Room/Hallway或Hallway/Hallway的连接口
  */
 public class Exit {
-    public static enum Orientation {
+    public enum Orientation {
         UP, DOWN, RIGHT, LEFT
     }
 
@@ -62,8 +62,8 @@ public class Exit {
         int x = pos.x(), y = pos.y();
         List<Position> wall = new ArrayList<>();
         switch (orientation) {
-            case Orientation.UP:
-            case Orientation.DOWN:
+            case UP:
+            case DOWN:
                 // .ffw
                 // ---
                 for (int i = 0; i < getTrueWidth() - 1; i++) {
@@ -71,8 +71,8 @@ public class Exit {
                     wall.add(new Position(x + i, y));
                 }
                 break;
-            case Orientation.LEFT:
-            case Orientation.RIGHT:
+            case LEFT:
+            case RIGHT:
                 // w
                 // f|
                 // f|
@@ -89,16 +89,16 @@ public class Exit {
     public static Exit randomExit(Room room, Orientation o, Random r) {
         // -2是防止Hallway跟最边上的墙岔开
         switch (o) {
-            case Orientation.UP:
+            case UP:
                 return new Exit(new Position(uniform(r, room.west, room.east - 2), room.north), Orientation.UP,
                         uniform(r, 1, 3));
-            case Orientation.DOWN:
+            case DOWN:
                 return new Exit(new Position(uniform(r, room.west, room.east - 2), room.south), Orientation.DOWN,
                         uniform(r, 1, 3));
-            case Orientation.LEFT:
+            case LEFT:
                 return new Exit(new Position(room.west, uniform(r, room.south, room.north - 2)), Orientation.LEFT,
                         uniform(r, 1, 3));
-            case Orientation.RIGHT:
+            case RIGHT:
                 return new Exit(new Position(room.east, uniform(r, room.south, room.north - 2)), Orientation.RIGHT,
                         uniform(r, 1, 3));
             default:
@@ -109,16 +109,16 @@ public class Exit {
     public void addToMap(World w) {
         int x = pos.x(), y = pos.y();
         switch (orientation) {
-            case Orientation.UP:
-            case Orientation.DOWN:
+            case UP:
+            case DOWN:
                 // .ffw
                 //  --
                 for (int i = 1; i < getTrueWidth() - 1; i++) {
                     w.addTile(new Position(x + i, y), Tileset.FLOOR);
                 }
                 break;
-            case Orientation.LEFT:
-            case Orientation.RIGHT:
+            case LEFT:
+            case RIGHT:
                 // w
                 // f|
                 // f|

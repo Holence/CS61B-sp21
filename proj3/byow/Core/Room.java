@@ -121,19 +121,19 @@ public class Room {
         //  wfffffw
         //  .wwwwww
         switch (e.getOrientation()) {
-            case Orientation.UP:
+            case UP:
                 // 允许往左随机偏移
                 pp = pp.offset(uniform(r, (int) -width / 2, 1), 0);
                 break;
-            case Orientation.DOWN:
+            case DOWN:
                 // 允许往左随机偏移
                 pp = pp.offset(uniform(r, (int) -width / 2, 1), -height);
                 break;
-            case Orientation.LEFT:
+            case LEFT:
                 // 允许往下随机偏移
                 pp = pp.offset(-width, uniform(r, (int) -height / 2, 1));
                 break;
-            case Orientation.RIGHT:
+            case RIGHT:
                 // 允许往下随机偏移
                 pp = pp.offset(0, uniform(r, (int) -height / 2, 1));
                 break;
