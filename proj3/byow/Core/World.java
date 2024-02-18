@@ -18,13 +18,10 @@ public class World {
     public static final int RETRY_TIMES = 6;
     public static final int RANDOM_MAX_LENGTH = Math.min(WIDTH, HEIGHT) / 4;
     private TETile[][] world;
-    private Random randomizer;
+    private Random randomizer = new Random();
 
-    World() {
-        randomizer = new Random();
-        long seed = randomizer.nextLong();
+    World(long seed) {
         randomizer.setSeed(seed);
-        System.out.println("Seed " + seed);
 
         world = new TETile[WIDTH][HEIGHT];
         initialize();
@@ -102,7 +99,7 @@ public class World {
     }
 
     public static void main(String[] args) {
-        World w = new World();
+        World w = new World(114514);
         TERenderer ter = new TERenderer();
         // initialize the tile rendering engine with a window of size WIDTH x HEIGHT
         ter.initialize(WIDTH, HEIGHT);
