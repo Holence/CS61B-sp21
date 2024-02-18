@@ -8,8 +8,24 @@ import byow.Core.World.Orientation;
 import byow.TileEngine.Tileset;
 
 public class Room {
-    static int MIN_LENGTH = 6;
+    static int MIN_LENGTH = 4;
     int east, south, west, north;
+
+    public int getEast() {
+        return east;
+    }
+
+    public int getSouth() {
+        return south;
+    }
+
+    public int getWest() {
+        return west;
+    }
+
+    public int getNorth() {
+        return north;
+    }
 
     List<Position> useablePostion;
 
@@ -95,16 +111,16 @@ public class Room {
 
         switch (e.getOrientation()) {
             case Orientation.UP:
-                pp = pp.offset(uniform(r, (int) -width / 2, (int) width / 2), 0);
+                pp = pp.offset(uniform(r, (int) -width / 2, 0), 0);
                 break;
             case Orientation.DOWN:
-                pp = pp.offset(uniform(r, (int) -width / 2, (int) width / 2), -height);
+                pp = pp.offset(uniform(r, (int) -width / 2, 0), -height);
                 break;
             case Orientation.LEFT:
-                pp = pp.offset(-width, uniform(r, (int) -height / 2, (int) height / 2));
+                pp = pp.offset(-width, uniform(r, (int) -height / 2, 0));
                 break;
             case Orientation.RIGHT:
-                pp = pp.offset(0, uniform(r, (int) -height / 2, (int) height / 2));
+                pp = pp.offset(0, uniform(r, (int) -height / 2, 0));
                 break;
         }
         return new Room(pp, width, height);
@@ -124,7 +140,7 @@ public class Room {
     /**
      * 随机在Room墙壁生成通往Hallway的出口
      */
-    public Exit getExit(Random r) {
+    public Exit getRandomExit(Random r) {
         Exit e = null;
         switch (uniform(r, 4)) {
             case 0:
@@ -156,6 +172,6 @@ public class Room {
 
     @Override
     public String toString() {
-        return String.format("x: [%s %s]\ny: [%s %s]", west, east, south, north);
+        return String.format("Room - x: [%s %s] y: [%s %s]", west, east, south, north);
     }
 }

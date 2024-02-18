@@ -7,10 +7,9 @@ import java.util.List;
 import java.util.Random;
 
 import byow.Core.World.Orientation;
-import byow.TileEngine.Tileset;
 
 public class Hallway extends Room {
-
+    private int width; // 指floor的宽度（不包含wall），为1或2
     private Orientation orientation;
 
     /**
@@ -21,8 +20,9 @@ public class Hallway extends Room {
      * @param length
      */
     public Hallway(Position p, Orientation o, int width, int length) {
-        // super();
+        super();
         orientation = o;
+        this.width = width;
         switch (orientation) {
             case Orientation.UP:
                 // wffw
@@ -101,44 +101,14 @@ public class Hallway extends Room {
         return wall;
     }
 
-    @Override
-    public void addToMap(World w) {
-        int x, y;
-        super.addToMap(w);
-        switch (orientation) {
-            case Orientation.UP:
-            case Orientation.DOWN:
-                y = south;
-                for (x = west + 1; x < east; x++) {
-                    w.addTile(x, y, Tileset.FLOOR);
-                }
-                y = north;
-                for (x = west + 1; x < east; x++) {
-                    w.addTile(x, y, Tileset.FLOOR);
-                }
-                break;
-            case Orientation.LEFT:
-            case Orientation.RIGHT:
-                x = east;
-                for (y = south + 1; y < north; y++) {
-                    w.addTile(x, y, Tileset.FLOOR);
-                }
-                x = west;
-                for (y = south + 1; y < north; y++) {
-                    w.addTile(x, y, Tileset.FLOOR);
-                }
-                break;
-        }
-    }
-
     public static Hallway randomHallway(Exit e, int maxLength, Random r) {
-        return new Hallway(e.getPos(), e.getOrientation(), uniform(r, 1, 3), uniform(r, MIN_LENGTH, maxLength));
+        return new Hallway(e.getPos(), e.getOrientation(), e.getWidth(), uniform(r, MIN_LENGTH, maxLength));
     }
 
     /**
      * 随机在Hallway的墙壁上生成通往Hallway的出口
      */
-    public Exit getExit(Random r) {
+    public Exit getRandomExit(Random r) {
         Exit e = null;
         switch (orientation) {
             case Orientation.UP:
@@ -169,7 +139,6 @@ public class Hallway extends Room {
                 }
                 break;
         }
-        System.out.println(e);
         if (checkExitValid(e)) {
             for (Position position : e.getPosList()) {
                 useablePostion.remove(position);
@@ -180,8 +149,23 @@ public class Hallway extends Room {
         }
     }
 
+    public Exit getExit() {
+        switch (orientation) {
+            case Orientation.UP:
+                return new Exit(new Position(west, north), Orientation.UP, width);
+            case Orientation.DOWN:
+                return new Exit(new Position(west, south), Orientation.DOWN, width);
+            case Orientation.LEFT:
+                return new Exit(new Position(west, south), Orientation.LEFT, width);
+            case Orientation.RIGHT:
+                return new Exit(new Position(east, south), Orientation.RIGHT, width);
+            default:
+                return null;
+        }
+    }
+
     @Override
     public String toString() {
-        return String.format("x: [%s %s]\ny: [%s %s] - %s", west, east, south, north, orientation);
+        return String.format("Hallway - x: [%s %s] y: [%s %s] - %s", west, east, south, north, orientation);
     }
 }
