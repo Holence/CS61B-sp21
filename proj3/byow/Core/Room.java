@@ -4,12 +4,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import static byow.Core.RandomUtils.uniform;
-import byow.Core.World.Orientation;
+import static byow.Core.World.RANDOM_MAX_LENGTH;
+import byow.Core.Exit.Orientation;
+import byow.TileEngine.TETile;
 import byow.TileEngine.Tileset;
 
 public class Room {
     static int MIN_LENGTH = 4;
     int east, south, west, north;
+    List<Exit> exitList = new ArrayList<>();
+
+    List<Position> useablePostion;
 
     public int getEast() {
         return east;
@@ -27,7 +32,9 @@ public class Room {
         return north;
     }
 
-    List<Position> useablePostion;
+    public List<Exit> getExitList() {
+        return exitList;
+    }
 
     Room() {
 
@@ -109,23 +116,36 @@ public class Room {
         int height = uniform(r, MIN_LENGTH, maxHeight);
         Position pp = e.getPos();
 
+        //  wwwwwww
+        //  wfffffw
+        //  wfffffw
+        //  .wwwwww
         switch (e.getOrientation()) {
             case Orientation.UP:
-                pp = pp.offset(uniform(r, (int) -width / 2, 0), 0);
+                // 允许往左随机偏移
+                pp = pp.offset(uniform(r, (int) -width / 2, 1), 0);
                 break;
             case Orientation.DOWN:
-                pp = pp.offset(uniform(r, (int) -width / 2, 0), -height);
+                // 允许往左随机偏移
+                pp = pp.offset(uniform(r, (int) -width / 2, 1), -height);
                 break;
             case Orientation.LEFT:
-                pp = pp.offset(-width, uniform(r, (int) -height / 2, 0));
+                // 允许往下随机偏移
+                pp = pp.offset(-width, uniform(r, (int) -height / 2, 1));
                 break;
             case Orientation.RIGHT:
-                pp = pp.offset(0, uniform(r, (int) -height / 2, 0));
+                // 允许往下随机偏移
+                pp = pp.offset(0, uniform(r, (int) -height / 2, 1));
                 break;
         }
         return new Room(pp, width, height);
     }
 
+    /**
+     * 如果useablePostion无法提供exit所需的占用空间，则返回false
+     * @param e
+     * @return
+     */
     public boolean checkExitValid(Exit e) {
         boolean valid = true;
         for (Position position : e.getPosList()) {
@@ -140,7 +160,7 @@ public class Room {
     /**
      * 随机在Room墙壁生成通往Hallway的出口
      */
-    public Exit getRandomExit(Random r) {
+    Exit getRandomExit(Random r) {
         Exit e = null;
         switch (uniform(r, 4)) {
             case 0:
@@ -167,6 +187,51 @@ public class Room {
             return e;
         } else {
             return null;
+        }
+    }
+
+    /**
+     * 尝试在wall生成Hallway
+     * 可能因为没有剩余的地方作为exit而失败
+     * 也可能因为生成的新Hallway在地图上超出边缘或覆盖到已有的floor而失败
+     * @param world
+     * @param r
+     * @return
+     */
+    public Hallway exploreRandomHallway(TETile[][] world, Random r) {
+        Hallway newHallway;
+        Exit newExit;
+
+        newExit = getRandomExit(r);
+        if (newExit != null) {
+            newHallway = Hallway.randomHallway(newExit, RANDOM_MAX_LENGTH, r);
+            if (newHallway.isValid(world)) {
+                exitList.add(newExit);
+                return newHallway;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 如果在地图上超出边缘或覆盖到已有的floor，则返回false
+     * @param world
+     * @return
+     */
+    public boolean isValid(TETile[][] world) {
+        int WIDTH = world.length;
+        int HEIGHT = world[0].length;
+        if (west < 0 || east >= WIDTH || south < 0 || north >= HEIGHT) {
+            return false;
+        } else {
+            for (int x = west; x <= east; x++) {
+                for (int y = south; y <= north; y++) {
+                    if (world[x][y].character() == Tileset.FLOOR.character()) {
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
     }
 

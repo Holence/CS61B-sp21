@@ -6,13 +6,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import byow.Core.World.Orientation;
 import byow.TileEngine.Tileset;
 
 /**
  * Room/Hallway或Hallway/Hallway的连接口
  */
 public class Exit {
+    public static enum Orientation {
+        UP, DOWN, RIGHT, LEFT
+    }
+
     private Position pos;
     private Orientation orientation;
     private int width; // 指floor的宽度（不包含wall），为1或2
@@ -62,17 +65,20 @@ public class Exit {
             case Orientation.UP:
             case Orientation.DOWN:
                 // .ffw
-                for (int i = 0; i < getTrueWidth(); i++) {
+                // ---
+                for (int i = 0; i < getTrueWidth() - 1; i++) {
+                    // -1表示允许 exit的最后一格wall 和 另一个exit的第一格wall 重合
                     wall.add(new Position(x + i, y));
                 }
                 break;
             case Orientation.LEFT:
             case Orientation.RIGHT:
                 // w
-                // f
-                // f
-                // .
-                for (int i = 0; i < getTrueWidth(); i++) {
+                // f|
+                // f|
+                // .|
+                for (int i = 0; i < getTrueWidth() - 1; i++) {
+                    // -1表示允许 exit的最后一格wall 和 另一个exit的第一格wall 重合
                     wall.add(new Position(x, y + i));
                 }
                 break;
@@ -106,6 +112,7 @@ public class Exit {
             case Orientation.UP:
             case Orientation.DOWN:
                 // .ffw
+                //  --
                 for (int i = 1; i < getTrueWidth() - 1; i++) {
                     w.addTile(new Position(x + i, y), Tileset.FLOOR);
                 }
@@ -113,8 +120,8 @@ public class Exit {
             case Orientation.LEFT:
             case Orientation.RIGHT:
                 // w
-                // f
-                // f
+                // f|
+                // f|
                 // .
                 for (int i = 1; i < getTrueWidth() - 1; i++) {
                     w.addTile(new Position(x, y + i), Tileset.FLOOR);

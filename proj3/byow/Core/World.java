@@ -6,25 +6,21 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Random;
 
+import byow.Core.Exit.Orientation;
 import byow.TileEngine.TERenderer;
 import byow.TileEngine.TETile;
 import byow.TileEngine.Tileset;
 
 public class World {
-    private static final int WIDTH = 100;
-    private static final int HEIGHT = 40;
+    private static final int WIDTH = 120;
+    private static final int HEIGHT = 80;
 
-    private static final int RETRY_TIMES = 3;
-    private static final int RANDOM_MAX_LENGTH = Math.min(WIDTH, HEIGHT) / 4;
+    public static final int RETRY_TIMES = 6;
+    public static final int RANDOM_MAX_LENGTH = Math.min(WIDTH, HEIGHT) / 4;
     private TETile[][] world;
     private Random randomizer;
 
-    public enum Orientation {
-        UP, DOWN, RIGHT, LEFT
-    }
-
     World() {
-
         randomizer = new Random();
         long seed = randomizer.nextLong();
         randomizer.setSeed(seed);
@@ -43,65 +39,44 @@ public class World {
         List<Exit> validExitList = new ArrayList<>();
 
         Room currentRoom;
+        Room newRoom;
         // initial room
         currentRoom = Room.randomRoom(new Exit(new Position(WIDTH / 2, HEIGHT / 2), Orientation.UP, 1), RANDOM_MAX_LENGTH,
                 RANDOM_MAX_LENGTH, randomizer);
         currentRoom.addToMap(this);
         roomDeque.add(currentRoom);
         while (!roomDeque.isEmpty()) {
+            // 对于每个currentRoom
             currentRoom = roomDeque.removeFirst();
 
-            if (currentRoom.getClass().equals(Room.class)) {
-                exploreHallway(validExitList, roomDeque, currentRoom);
-            } else if (currentRoom.getClass().equals(Hallway.class)) {
-                exploreRoom(validExitList, roomDeque, (Hallway) currentRoom);
-                exploreHallway(validExitList, roomDeque, currentRoom);
-            }
-        }
-        // 最后绘制Exit
-        for (Exit validExit : validExitList) {
-            validExit.addToMap(this);
-        }
-    }
-
-    private void exploreHallway(List<Exit> validExitList, Deque<Room> roomDeque, Room currentRoom) {
-        Room newRoom;
-        Exit newExit;
-        for (int i = 0; i < RETRY_TIMES; i++) {
-            newExit = currentRoom.getRandomExit(randomizer);
-            if (newExit != null) {
-                newRoom = Hallway.randomHallway(newExit, RANDOM_MAX_LENGTH, randomizer);
-                if (isValid(newRoom)) {
-                    newRoom.addToMap(this);
-                    validExitList.add(newExit);
-                    roomDeque.addLast(newRoom);
-                }
-            }
-        }
-    }
-
-    private void exploreRoom(List<Exit> validExitList, Deque<Room> roomDeque, Hallway currentRoom) {
-        Exit newExit = currentRoom.getExit();
-        Room newRoom = Room.randomRoom(newExit, RANDOM_MAX_LENGTH, RANDOM_MAX_LENGTH, randomizer);
-        if (isValid(newRoom)) {
-            newRoom.addToMap(this);
-            validExitList.add(newExit);
-            roomDeque.addLast(newRoom);
-        }
-    }
-
-    private boolean isValid(Room r) {
-        if (r.getWest() < 0 || r.getEast() >= WIDTH || r.getSouth() < 0 || r.getNorth() >= HEIGHT) {
-            return false;
-        } else {
-            for (int x = r.getWest(); x <= r.getEast(); x++) {
-                for (int y = r.getSouth(); y <= r.getNorth(); y++) {
-                    if (world[x][y].character() == Tileset.FLOOR.character()) {
-                        return false;
+            // 如果是Hallway，尝试在EndExit上生成Room
+            for (int i = 0; i < RETRY_TIMES; i++) {
+                if (currentRoom.getClass().equals(Hallway.class)) {
+                    newRoom = ((Hallway) currentRoom).exploreRandomRoom(world, randomizer);
+                    if (newRoom != null) {
+                        newRoom.addToMap(this);
+                        roomDeque.addLast(newRoom);
+                        break;
                     }
                 }
             }
-            return true;
+
+            // 不论是Room还是Hallway，都尝试在wall上生成Hallway
+            for (int i = 0; i < RETRY_TIMES; i++) {
+                newRoom = currentRoom.exploreRandomHallway(world, randomizer);
+                if (newRoom != null) {
+                    newRoom.addToMap(this);
+                    roomDeque.addLast(newRoom);
+                }
+            }
+
+            // 记录有效的Exit
+            validExitList.addAll(currentRoom.getExitList());
+        }
+
+        // 最后绘制Exit
+        for (Exit validExit : validExitList) {
+            validExit.addToMap(this);
         }
     }
 

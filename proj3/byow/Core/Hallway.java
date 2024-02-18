@@ -1,12 +1,14 @@
 package byow.Core;
 
 import static byow.Core.RandomUtils.uniform;
+import static byow.Core.World.RANDOM_MAX_LENGTH;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import byow.Core.World.Orientation;
+import byow.Core.Exit.Orientation;
+import byow.TileEngine.TETile;
 
 public class Hallway extends Room {
     private int width; // 指floor的宽度（不包含wall），为1或2
@@ -106,9 +108,10 @@ public class Hallway extends Room {
     }
 
     /**
-     * 随机在Hallway的墙壁上生成通往Hallway的出口
+     * 随机在Hallway的墙壁上生成通往Hallway的Exit
      */
-    public Exit getRandomExit(Random r) {
+    @Override
+    Exit getRandomExit(Random r) {
         Exit e = null;
         switch (orientation) {
             case Orientation.UP:
@@ -149,7 +152,11 @@ public class Hallway extends Room {
         }
     }
 
-    public Exit getExit() {
+    /**
+     * Hallway终端的Exit（不是墙上的Exit）
+     * @return
+     */
+    public Exit getEndExit() {
         switch (orientation) {
             case Orientation.UP:
                 return new Exit(new Position(west, north), Orientation.UP, width);
@@ -162,6 +169,25 @@ public class Hallway extends Room {
             default:
                 return null;
         }
+    }
+
+    /**
+     * 尝试在Hallway的EndExit上生成Room
+     * 可能因为生成的新Room在地图上超出边缘或覆盖到已有的floor而失败
+     * @param world
+     * @param r
+     * @return
+     */
+    public Room exploreRandomRoom(TETile[][] world, Random r) {
+        Room newRoom;
+        Exit newExit = getEndExit();
+        newRoom = Room.randomRoom(newExit, RANDOM_MAX_LENGTH, RANDOM_MAX_LENGTH, r);
+
+        if (newRoom.isValid(world)) {
+            exitList.add(newExit);
+            return newRoom;
+        }
+        return null;
     }
 
     @Override
